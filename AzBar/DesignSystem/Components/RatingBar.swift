@@ -1,12 +1,11 @@
 import SwiftUI
 
-/// Four glass buttons (again / hard / good / easy) with the next interval under each title.
-/// Must be placed in a floating layer (e.g. a bottom safe-area inset).
+/// Four paper buttons (again / hard / good / easy) with the next interval under each title.
 struct RatingBar: View {
     /// Preview of the scheduling outcome per rating; nil hides the intervals.
     var previews: [Rating: SchedulingResult]?
     var now: Date = .now
-    /// Highlighted with a prominent glass style and the caption «پیشنهاد».
+    /// Filled with the tone colour and captioned «پیشنهاد».
     var suggested: Rating? = nil
     var onRate: (Rating) -> Void
 
@@ -22,39 +21,35 @@ struct RatingBar: View {
         VStack(spacing: Theme.Spacing.s) {
             Text("چقدر خوب به یاد آوردید؟")
                 .font(.app(.footnote, weight: .medium))
-                .foregroundStyle(.secondary)
-            GlassEffectContainer(spacing: Theme.Spacing.s) {
-                LazyVGrid(
-                    columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Spacing.s),
-                                   count: typeSize.isAccessibilitySize ? 2 : 4),
-                    spacing: Theme.Spacing.s
-                ) {
-                    ForEach(Rating.allCases, id: \.self) { rating in
-                        Button {
-                            tap = Tap(rating: rating, count: (tap?.count ?? 0) + 1)
-                            onRate(rating)
-                        } label: {
-                            VStack(spacing: 2) {
-                                Text(Theme.title(for: rating))
-                                    .font(.app(.callout, weight: .semibold))
-                                if let result = previews?[rating] {
-                                    Text(IntervalFormatter.short(result, from: now))
-                                        .font(.app(.caption2))
-                                        .opacity(0.75)
-                                }
-                                if rating == suggested {
-                                    Text("پیشنهاد")
-                                        .font(.app(.caption2, weight: .bold))
-                                }
+                .foregroundStyle(Theme.Palette.inkSecondary)
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: Theme.Spacing.s),
+                               count: typeSize.isAccessibilitySize ? 2 : 4),
+                spacing: Theme.Spacing.s
+            ) {
+                ForEach(Rating.allCases, id: \.self) { rating in
+                    Button {
+                        tap = Tap(rating: rating, count: (tap?.count ?? 0) + 1)
+                        onRate(rating)
+                    } label: {
+                        VStack(spacing: 2) {
+                            Text(Theme.title(for: rating))
+                                .font(.app(.callout, weight: .semibold))
+                            if let result = previews?[rating] {
+                                Text(IntervalFormatter.short(result, from: now))
+                                    .font(.app(.caption2))
                             }
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                            .frame(maxWidth: .infinity, minHeight: 44)
+                            if rating == suggested {
+                                Text("پیشنهاد")
+                                    .font(.app(.caption2, weight: .bold))
+                            }
                         }
-                        .buttonStyle(RatingButtonStyle(prominent: rating == suggested))
-                        .tint(Theme.color(for: rating))
-                        .accessibilityLabel(label(for: rating))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .frame(maxWidth: .infinity, minHeight: 52)
                     }
+                    .buttonStyle(AzRatingButtonStyle(rating: rating, prominent: rating == suggested))
+                    .accessibilityLabel(label(for: rating))
                 }
             }
         }
@@ -78,22 +73,11 @@ struct RatingBar: View {
     }
 }
 
-private struct RatingButtonStyle: PrimitiveButtonStyle {
-    let prominent: Bool
-
-    func makeBody(configuration: Configuration) -> some View {
-        if prominent {
-            Button(configuration).buttonStyle(.glassProminent)
-        } else {
-            Button(configuration).buttonStyle(.glass)
-        }
-    }
-}
-
 #Preview {
     let scheduler = FSRSScheduler()
     let card = FSRSCard.new(now: .now)
     RatingBar(previews: scheduler.preview(card, now: .now), suggested: .good) { _ in }
         .padding()
+        .azScreenBackground()
         .persianRoot()
 }

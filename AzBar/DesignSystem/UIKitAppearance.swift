@@ -15,8 +15,8 @@ enum UIKitAppearance {
         }
 
         let nav = UINavigationBar.appearance()
-        nav.titleTextAttributes = [.font: font("Vazirmatn-SemiBold", 17, .headline)]
-        nav.largeTitleTextAttributes = [.font: font("Vazirmatn-Bold", 34, .largeTitle)]
+        nav.titleTextAttributes = [.font: font("Vazirmatn-SemiBold", 17, .headline), .foregroundColor: UIColor(Theme.Palette.ink)]
+        nav.largeTitleTextAttributes = [.font: font("Vazirmatn-Bold", 34, .largeTitle), .foregroundColor: UIColor(Theme.Palette.ink)]
 
         let segmented = UISegmentedControl.appearance()
         segmented.setTitleTextAttributes([.font: font("Vazirmatn-Regular", 13, .footnote)], for: .normal)

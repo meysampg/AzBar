@@ -20,7 +20,10 @@ struct ConfettiView: View {
         var delay: Double
     }
 
-    private static let colors: [Color] = [.red, .orange, .yellow, .green, .teal, .blue, .purple, .pink]
+    private static let colors: [Color] = [
+        Theme.Palette.teal, Theme.Palette.gold, Theme.Palette.success,
+        Theme.Palette.flame, Theme.Palette.plum, Theme.Palette.info,
+    ]
 
     private func particles() -> [Particle] {
         var rng = SplitMix(seed: UInt64(truncatingIfNeeded: trigger) &* 0x9E37_79B9 &+ 17)

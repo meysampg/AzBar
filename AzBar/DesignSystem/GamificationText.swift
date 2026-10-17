@@ -27,7 +27,7 @@ extension BadgeID {
         case .perfectLesson: "درسی را بی هیچ اشتباهی تمام کردید"
         case .firstGhazal: "همهٔ بیت‌های یک شعر را آموختید"
         case .tenGhazals: "ده شعر را کامل آموختید"
-        case .firstChallenge: "آزمون کل غزل را با موفقیت گذراندید"
+        case .firstChallenge: "آزمون پایانی یک شعر را با موفقیت گذراندید"
         case .streak3: "سه روز پشت سر هم تمرین کردید"
         case .streak7: "یک هفته بی‌وقفه تمرین کردید"
         case .streak30: "سی روز پیاپی تمرین کردید"
@@ -63,13 +63,21 @@ extension BadgeID {
 
     var tint: Color {
         switch self {
-        case .firstLesson, .mature50: .green
-        case .perfectLesson, .firstChallenge: Theme.Playful.gold
-        case .firstGhazal, .falSeeker: .teal
-        case .tenGhazals, .reviews500, .nightOwl: .purple
-        case .streak3, .streak7, .earlyBird: .orange
-        case .streak30: .red
-        case .reviews100, .level10: .blue
+        case .firstLesson, .mature50: Theme.Palette.success
+        case .perfectLesson, .firstChallenge: Theme.Palette.gold
+        case .firstGhazal, .falSeeker: Theme.Palette.teal
+        case .tenGhazals, .reviews500, .nightOwl: Theme.Palette.plum
+        case .streak3, .streak7, .earlyBird: Theme.Palette.flame
+        case .streak30: Theme.Palette.danger
+        case .reviews100, .level10: Theme.Palette.info
+        }
+    }
+
+    /// Symbol colour on a filled tint (ink on gold, white otherwise).
+    var symbolColor: Color {
+        switch self {
+        case .perfectLesson, .firstChallenge: Theme.Palette.ink
+        default: .white
         }
     }
 }
@@ -81,7 +89,7 @@ enum LevelText {
         case 5..<10: "شاگرد"
         case 10..<20: "غزل‌دان"
         case 20..<30: "سخن‌شناس"
-        default: "حافظ‌شناس"
+        default: "سخن‌دان"
         }
     }
 }

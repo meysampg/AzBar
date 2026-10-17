@@ -48,6 +48,7 @@ struct ClozeMesraView: View {
         } else {
             Text(verbatim: token.text)
                 .font(.poem(font, size: size))
+                .foregroundStyle(Theme.Palette.ink)
                 .padding(.vertical, font.verticalPadding(size))
         }
     }
@@ -55,19 +56,21 @@ struct ClozeMesraView: View {
     private func hiddenBody(_ token: MesraToken, concealed: Bool) -> some View {
         Text(verbatim: token.text)
             .font(.poem(font, size: size))
+            .foregroundStyle(Theme.Palette.ink)
             .opacity(concealed ? 0 : 1)
             .padding(.vertical, font.verticalPadding(size))
             .padding(.horizontal, size * 0.15)
             .background {
-                RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
-                    .fill(.quaternary)
+                Capsule()
+                    .fill(Theme.Palette.paperDeep)
+                    .overlay { Capsule().strokeBorder(Theme.Palette.sand, lineWidth: 1) }
                     .opacity(concealed ? 1 : 0.35)
             }
             .overlay {
                 if concealed, style == .hints {
                     Text(verbatim: ClozeEngine.firstLetterHint(token))
                         .font(.poem(font, size: size))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.Palette.inkSecondary)
                         .padding(.vertical, font.verticalPadding(size))
                 }
             }

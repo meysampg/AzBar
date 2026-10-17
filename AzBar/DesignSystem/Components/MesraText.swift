@@ -9,6 +9,7 @@ struct MesraText: View {
     var body: some View {
         Text(verbatim: text)
             .font(.poem(font, size: size))
+            .foregroundStyle(Theme.Palette.ink)
             .lineSpacing(font.lineSpacing(size))
             .multilineTextAlignment(alignment)
             .padding(.vertical, font.verticalPadding(size))

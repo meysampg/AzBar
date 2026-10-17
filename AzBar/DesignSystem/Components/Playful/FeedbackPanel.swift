@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Bottom panel shown after a graded answer: green «آفرین!»-family title + «+۲ امتیاز», or red «نادرست» +
-/// «پاسخ درست:» and the answer in the poem font. A chunky «ادامه» button unless an accessory is supplied
+/// Bottom panel shown after a graded answer: success «آفرین!»-family title + «+۲ امتیاز», or red «نادرست» +
+/// «پاسخ درست:» and the answer in the poem font. An «ادامه» primary button unless an accessory is supplied
 /// (then the accessory, e.g. a RatingBar, replaces it). Posts an AccessibilityNotification announcement.
 struct FeedbackPanel<Accessory: View>: View {
     enum Kind: Equatable {
@@ -15,7 +15,6 @@ struct FeedbackPanel<Accessory: View>: View {
     @ViewBuilder var accessory: Accessory
 
     @Environment(AppSettings.self) private var settings: AppSettings?
-    @Environment(\.colorScheme) private var colorScheme
 
     init(kind: Kind, xp: Int = 0, onContinue: @escaping () -> Void, @ViewBuilder accessory: () -> Accessory) {
         self.kind = kind
@@ -28,8 +27,8 @@ struct FeedbackPanel<Accessory: View>: View {
         if case .correct = kind { true } else { false }
     }
 
-    private var tint: Color { isCorrect ? Theme.Playful.correct : Theme.Playful.wrong }
-    private var textTint: Color { tint.mix(with: colorScheme == .dark ? .white : .black, by: colorScheme == .dark ? 0.2 : 0.3) }
+    private var softTint: Color { isCorrect ? Theme.Palette.successSoft : Theme.Palette.dangerSoft }
+    private var textTint: Color { isCorrect ? Theme.Palette.successDeep : Theme.Palette.dangerDeep }
     private var hasAccessory: Bool { Accessory.self != EmptyView.self }
 
     private var title: String {
@@ -58,12 +57,7 @@ struct FeedbackPanel<Accessory: View>: View {
                     .font(.app(.title3, weight: .bold))
                 Spacer(minLength: 0)
                 if isCorrect, xp > 0 {
-                    Text("+\(xp.fa) امتیاز")
-                        .font(.app(.subheadline, weight: .bold))
-                        .padding(.horizontal, Theme.Spacing.m)
-                        .padding(.vertical, Theme.Spacing.xs)
-                        .background(Theme.Playful.xp.opacity(0.18), in: .capsule)
-                        .foregroundStyle(Theme.Playful.xp.mix(with: colorScheme == .dark ? .white : .black, by: 0.2))
+                    AzChip("+\(xp.fa) امتیاز", tone: .gold)
                 }
             }
             .foregroundStyle(textTint)
@@ -72,11 +66,12 @@ struct FeedbackPanel<Accessory: View>: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                     Text("پاسخ درست:")
                         .font(.app(.footnote, weight: .semibold))
+                        .foregroundStyle(textTint)
                     Text(verbatim: answer)
                         .font(.poem(settings?.poemFont ?? .naskh, size: CGFloat(settings?.poemFontSize ?? 22)))
                         .fixedSize(horizontal: false, vertical: true)
+                        .foregroundStyle(Theme.Palette.ink)
                 }
-                .foregroundStyle(textTint)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
@@ -84,16 +79,14 @@ struct FeedbackPanel<Accessory: View>: View {
                 accessory
             } else {
                 Button("ادامه", action: onContinue)
-                    .buttonStyle(.chunky(tint))
+                    .buttonStyle(.azPrimary(isCorrect ? .success : .danger))
             }
         }
         .padding(Theme.Spacing.l)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background {
-            Rectangle()
-                .fill(tint.opacity(colorScheme == .dark ? 0.22 : 0.14))
-                .background(.background)
-                .clipShape(UnevenRoundedRectangle(topLeadingRadius: Theme.Radius.card, topTrailingRadius: Theme.Radius.card))
+            softTint
+                .clipShape(UnevenRoundedRectangle(topLeadingRadius: Theme.Radius.panel, topTrailingRadius: Theme.Radius.panel))
                 .ignoresSafeArea(edges: .bottom)
         }
         .transition(.move(edge: .bottom).combined(with: .opacity))

@@ -27,6 +27,7 @@ public final class ContentRepository: Sendable {
     private let bundled: [PoetID: BundledPoemSource]
     private let remote: GanjoorRemoteSource
     private let searchIndex = SearchIndex()
+    private let indexBuilder = SearchIndexBuilder()
     private let categoryCache = CategoryCache()
 
     public init(catalog: PoetCatalog, bundledPacks: [PoetID: URL], remote: GanjoorRemoteSource) {
@@ -62,12 +63,12 @@ public final class ContentRepository: Sendable {
     }
 
     public func poet(_ id: PoetID) async throws -> Poet {
-        if let b = bundled[id] { return try await b.poet(id: id) }
+        if let b = bundled[id], let p = try? await b.poet(id: id) { return p }
         return try await remote.poet(id: id)
     }
 
     public func rootCategory(poetId: PoetID) async throws -> PoemCategory {
-        if let b = bundled[poetId] { return try await b.rootCategory() }
+        if let b = bundled[poetId], let c = try? await b.rootCategory() { return c }
         guard let entry = catalog.entry(poetId) else { throw ContentError.notFound }
         return try await remote.category(id: entry.rootCategoryId)
     }
@@ -75,14 +76,28 @@ public final class ContentRepository: Sendable {
     public func category(_ id: CategoryID, poetId: PoetID) async throws -> PoemCategory {
         if let cached = await categoryCache.get(poetId: poetId, id: id) { return cached }
         let cat: PoemCategory
-        if let b = bundled[poetId] { cat = try await b.category(id: id) } else { cat = try await remote.category(id: id) }
+        if let b = bundled[poetId], let hit = (try? await b.categoryIfPresent(id: id)) ?? nil {
+            cat = hit
+        } else {
+            cat = try await remote.category(id: id)
+        }
         await categoryCache.set(cat, poetId: poetId)
         return cat
     }
 
     public func poem(_ id: PoemID, poetId: PoetID) async throws -> Poem {
-        if let b = bundled[poetId] { return try await b.poem(id: id) }
+        if let b = bundled[poetId], let hit = (try? await b.poemIfPresent(id: id)) ?? nil { return hit }
         return try await remote.poem(id: id)
+    }
+
+    public func isBundled(categoryId: CategoryID, poetId: PoetID) async -> Bool {
+        guard let b = bundled[poetId] else { return false }
+        return await b.containsCategory(categoryId)
+    }
+
+    public func isBundled(poemId: PoemID, poetId: PoetID) async -> Bool {
+        guard let b = bundled[poetId] else { return false }
+        return await b.containsPoem(poemId)
     }
 
     public func randomFalPoem(poetId: PoetID) async throws -> Poem {
@@ -92,16 +107,26 @@ public final class ContentRepository: Sendable {
         return try await poem(pick.id, poetId: poetId)
     }
 
-    /// Bundled poets only in v1; query normalized; minimum 2 characters. The index is built once, lazily.
-    public func search(_ query: String, limit: Int = 100) async -> [SearchHit] {
-        if !(await searchIndex.isBuilt) {
+    /// Builds the search index in the background (single build, even with concurrent callers).
+    public func prewarmSearchIndex() async {
+        let index = searchIndex
+        let sources = indexSources()
+        await indexBuilder.ensureBuilt {
             var all: [Poem] = []
-            for (_, source) in bundled.sorted(by: { $0.key < $1.key }) {
-                all.append(contentsOf: await source.allPoems())
-            }
-            await searchIndex.build(poems: all)
+            for source in sources { all.append(contentsOf: await source.allPoems()) }
+            await index.build(poems: all)
         }
-        return await searchIndex.search(query, limit: limit)
+    }
+
+    /// Bundled poets only; query normalized; minimum 2 characters. Hits come in catalog order, with at most
+    /// `perPoetLimit` per poet so one large poet cannot crowd out the others.
+    public func search(_ query: String, limit: Int = 100, perPoetLimit: Int = 40) async -> [SearchHit] {
+        await prewarmSearchIndex()
+        return await searchIndex.search(query, limit: limit, perPoetLimit: perPoetLimit)
+    }
+
+    private func indexSources() -> [BundledPoemSource] {
+        catalog.enabledPoets.compactMap { bundled[$0.id] }
     }
 
     /// Distinct recitation artists sorted by frequency descending (bundled poets).
@@ -111,7 +136,32 @@ public final class ContentRepository: Sendable {
         for poem in await source.allPoems() {
             for r in poem.recitations { counts[r.artist, default: 0] += 1 }
         }
-        return counts.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }.map(\.key)
+        return Self.rank(counts)
+    }
+
+    /// Distinct recitation artists across all bundled poets, by frequency descending.
+    public func recitationArtists() async -> [String] {
+        var counts: [String: Int] = [:]
+        for (_, source) in bundled.sorted(by: { $0.key < $1.key }) {
+            for poem in await source.allPoems() {
+                for r in poem.recitations { counts[r.artist, default: 0] += 1 }
+            }
+        }
+        return Self.rank(counts)
+    }
+
+    private static func rank(_ counts: [String: Int]) -> [String] {
+        counts.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }.map(\.key)
+    }
+}
+
+/// Ensures the search index is built exactly once, even with concurrent callers.
+actor SearchIndexBuilder {
+    private var task: Task<Void, Never>?
+
+    func ensureBuilt(_ work: @escaping @Sendable () async -> Void) async {
+        if task == nil { task = Task(priority: .utility) { await work() } }
+        await task?.value
     }
 }
 

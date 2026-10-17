@@ -49,7 +49,7 @@ struct PlayerBar: View {
                 .accessibilityLabel("۱۰ ثانیه به عقب")
             }
         }
-        .foregroundStyle(.primary)
+        .foregroundStyle(Theme.Palette.ink)
         .padding(Theme.Spacing.xs)
         .glassEffect(.regular.interactive(), in: .capsule)
         .sensoryFeedback(.impact(weight: .light), trigger: isPlaying)
@@ -75,7 +75,7 @@ struct PlayerBar: View {
                     .lineLimit(1)
                 Text(verbatim: Self.timeText(currentTime: currentTime, duration: duration))
                     .font(.app(.caption2))
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.Palette.inkSecondary)
                     .monospacedDigit()
             }
             .minimumScaleFactor(0.8)
@@ -107,6 +107,7 @@ struct PlayerBar: View {
         )
     }
     .padding()
+    .azScreenBackground()
     .persianRoot()
 }
 
@@ -117,5 +118,6 @@ struct PlayerBar: View {
         onToggle: {}, onSkipBack: {}, onSelect: { _ in }
     )
     .padding()
+    .azScreenBackground()
     .persianRoot()
 }

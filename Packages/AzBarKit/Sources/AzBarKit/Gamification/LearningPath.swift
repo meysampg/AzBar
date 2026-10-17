@@ -48,6 +48,11 @@ public enum LearningPath {
     /// partial group; the challenge is last. All states are `.locked`.
     public static func layout(memorizableIndices: [Int], config: LearningPathConfig) -> [PathNode] {
         guard !memorizableIndices.isEmpty else { return [] }
+        // A single lesson needs no review and no challenge.
+        if memorizableIndices.count <= config.lessonSize {
+            return [PathNode(id: "L\(memorizableIndices[0])", kind: .lesson, ordinal: 0,
+                             coupletIndices: memorizableIndices, lessonNumber: 1)]
+        }
         var nodes: [PathNode] = []
         var sinceReview: [[Int]] = []
         var lessonNumber = 0

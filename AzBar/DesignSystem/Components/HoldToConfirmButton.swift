@@ -1,12 +1,13 @@
 import SwiftUI
 
-/// A circular Liquid Glass button that must be held for `duration` seconds; a ring fills while held.
+/// A 112 pt teal medallion that must be held for `duration` seconds; a gold trim ring fills while held.
 /// VoiceOver users trigger it immediately with the default activation action.
 struct HoldToConfirmButton: View {
     let title: LocalizedStringKey
     var duration: Double = 1.2
     let onConfirm: () -> Void
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var progress: CGFloat = 0
     @State private var isPressing = false
     @State private var confirmCount = 0
@@ -21,23 +22,29 @@ struct HoldToConfirmButton: View {
     var body: some View {
         ZStack {
             Circle()
-                .stroke(.quaternary, lineWidth: 6)
+                .stroke(Theme.Palette.track, lineWidth: 6)
             Circle()
                 .trim(from: 0, to: progress)
-                .stroke(.tint, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                .stroke(Theme.Palette.gold, style: StrokeStyle(lineWidth: 6, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            Text(title)
-                .font(.app(.headline))
-                .multilineTextAlignment(.center)
-                .minimumScaleFactor(0.7)
+            AzMedallion(diameter: 112, fill: Theme.Palette.teal, edge: Theme.Palette.tealDeep) {
+                VStack(spacing: Theme.Spacing.xs) {
+                    Image(systemName: "hand.point.up.left.fill")
+                        .font(.system(size: 30, weight: .semibold))
+                        .accessibilityHidden(true)
+                    Text(title)
+                        .font(.app(.subheadline, weight: .bold))
+                        .multilineTextAlignment(.center)
+                        .minimumScaleFactor(0.7)
+                }
+                .foregroundStyle(.white)
                 .padding(Theme.Spacing.m)
-                .frame(width: 104, height: 104)
-                .glassEffect(.regular.interactive(), in: .circle)
+            }
+            .environment(\.azMedallionPressed, isPressing)
         }
-        .frame(width: 124, height: 124)
+        .frame(width: 136, height: 136)
         .contentShape(.circle)
-        .scaleEffect(isPressing ? 0.96 : 1)
-        .animation(.smooth(duration: 0.2), value: isPressing)
+        .animation(reduceMotion ? nil : .smooth(duration: 0.2), value: isPressing)
         .onLongPressGesture(minimumDuration: duration, maximumDistance: 60) {
             confirm()
         } onPressingChanged: { pressing in
@@ -58,9 +65,9 @@ struct HoldToConfirmButton: View {
             var reset = Transaction()
             reset.disablesAnimations = true
             withTransaction(reset) { progress = 0 }
-            withAnimation(.linear(duration: duration)) { progress = 1 }
+            withAnimation(reduceMotion ? nil : .linear(duration: duration)) { progress = 1 }
         } else if !didConfirm {
-            withAnimation(.easeOut(duration: 0.25)) { progress = 0 }
+            withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) { progress = 0 }
         }
     }
 
@@ -76,5 +83,6 @@ struct HoldToConfirmButton: View {
 #Preview {
     HoldToConfirmButton("نیت کردم") {}
         .padding(40)
+        .azScreenBackground()
         .persianRoot()
 }

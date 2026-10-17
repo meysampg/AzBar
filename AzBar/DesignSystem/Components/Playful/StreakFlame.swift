@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// `flame.fill` with a yellow → orange → red gradient, gray when not active today.
+/// Solid `flame.fill` (flame colour when active today, sand otherwise).
 /// `.symbolEffect(.bounce, value: streak)`; breathes when active and Reduce Motion is off.
 struct StreakFlame: View {
     var streak: Int
@@ -12,12 +12,7 @@ struct StreakFlame: View {
     var body: some View {
         Image(systemName: "flame.fill")
             .font(.system(size: size))
-            .foregroundStyle(
-                isActiveToday
-                    ? AnyShapeStyle(LinearGradient(colors: [.yellow, .orange, .red], startPoint: .top, endPoint: .bottom))
-                    : AnyShapeStyle(Color(.systemGray3))
-            )
-            .shadow(color: isActiveToday ? .orange.opacity(0.35) : .clear, radius: size * 0.15, y: size * 0.05)
+            .foregroundStyle(isActiveToday ? Theme.Palette.flame : Theme.Palette.sand)
             .symbolEffect(.bounce, value: streak)
             .symbolEffect(.breathe, isActive: isActiveToday && !reduceMotion)
             .accessibilityElement(children: .ignore)
@@ -32,5 +27,6 @@ struct StreakFlame: View {
         StreakFlame(streak: 5, isActiveToday: false, size: 56)
     }
     .padding()
+    .azScreenBackground()
     .persianRoot()
 }

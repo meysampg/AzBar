@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Pages through the celebrations (streak / daily goal / level up / badge) with a chunky «ادامه»;
+/// Pages through the celebrations (streak / daily goal / level up / badge) with a paper «ادامه»;
 /// confetti on level up and badge; plays the level-up sound; calls `onFinished` after the last page.
 struct CelebrationSequenceView: View {
     let celebrations: [Celebration]
@@ -16,7 +16,7 @@ struct CelebrationSequenceView: View {
 
     var body: some View {
         ZStack {
-            Color(.systemBackground).ignoresSafeArea()
+            Theme.Palette.paper.ignoresSafeArea()
             if let current {
                 VStack(spacing: Theme.Spacing.xl) {
                     Spacer()
@@ -25,7 +25,8 @@ struct CelebrationSequenceView: View {
                         .transition(.asymmetric(insertion: .scale(scale: 0.8).combined(with: .opacity), removal: .opacity))
                     Spacer()
                     Button(index == celebrations.count - 1 ? "ادامه" : "بعدی", action: advance)
-                        .buttonStyle(.chunky(accent(for: current)))
+                        .buttonStyle(.azPrimary)
+                        .frame(maxWidth: Theme.Layout.sessionWidth)
                 }
                 .padding(Theme.Spacing.xl)
             }
@@ -60,15 +61,6 @@ struct CelebrationSequenceView: View {
         }
     }
 
-    private func accent(for celebration: Celebration) -> Color {
-        switch celebration {
-        case .streak: Theme.Playful.xp
-        case .dailyGoal: Theme.Playful.correct
-        case .levelUp: .blue
-        case .badge(let id): id.tint
-        }
-    }
-
     @ViewBuilder
     private func page(for celebration: Celebration) -> some View {
         switch celebration {
@@ -82,10 +74,11 @@ struct CelebrationSequenceView: View {
             }
         case .levelUp(let level):
             content(title: "سطح \(level.fa)", subtitle: LevelText.title(level: level)) {
-                ZStack {
-                    Circle().fill(Color.blue.gradient).frame(width: 130, height: 130)
-                    Text(level.fa).font(.app(.largeTitle, weight: .bold)).foregroundStyle(.white)
+                AzMedallion(diameter: 130, fill: Theme.Palette.teal, rim: Theme.Palette.gold, rimWidth: 5,
+                            edge: Theme.Palette.tealDeep) {
+                    Text(level.fa).font(.azDisplay).foregroundStyle(.white)
                 }
+                .padding(.bottom, 4)
                 .accessibilityHidden(true)
             }
         case .badge(let id):
@@ -100,10 +93,11 @@ struct CelebrationSequenceView: View {
             visual()
             Text(title)
                 .font(.app(.title, weight: .bold))
+                .foregroundStyle(Theme.Palette.ink)
                 .multilineTextAlignment(.center)
             Text(subtitle)
                 .font(.app(.body))
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.Palette.inkSecondary)
                 .multilineTextAlignment(.center)
         }
         .accessibilityElement(children: .combine)

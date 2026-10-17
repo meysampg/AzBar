@@ -44,8 +44,8 @@ struct CoupletView: View {
         }
         .padding(.horizontal, Theme.Spacing.s)
         .background {
-            RoundedRectangle(cornerRadius: Theme.Radius.highlight)
-                .fill(.tint.opacity(isHighlighted ? 0.12 : 0))
+            RoundedRectangle(cornerRadius: Theme.Radius.highlight, style: .continuous)
+                .fill(Theme.Palette.tealSoft.opacity(isHighlighted ? 1 : 0))
         }
         .animation(.easeInOut(duration: 0.25), value: isHighlighted)
     }
@@ -68,6 +68,18 @@ struct CoupletView: View {
                         .frame(maxWidth: .infinity)
                 }
             }
+        } else if couplet.kind == .paragraph {
+            VStack(alignment: .leading, spacing: Theme.Spacing.s) {
+                ForEach(couplet.verses) { verse in
+                    Text(verbatim: transform(verse.text))
+                        .font(.poem(font == .nastaliq ? .naskh : font, size: size * 0.85))
+                        .foregroundStyle(Theme.Palette.ink)
+                        .lineSpacing(size * 0.5)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
         } else {
             VStack(spacing: 6) {
                 ForEach(couplet.verses) { verse in
@@ -87,12 +99,12 @@ struct CoupletView: View {
                     .font(.app(.footnote, weight: .medium))
             }
             .buttonStyle(.plain)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(Theme.Palette.teal)
             .accessibilityLabel(isMeaningExpanded ? "پنهان کردن معنی" : "نمایش معنی")
             if isMeaningExpanded {
                 Text(verbatim: summary)
-                    .font(.app(.subheadline))
-                    .foregroundStyle(.secondary)
+                    .font(.azMeta)
+                    .foregroundStyle(Theme.Palette.inkSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
@@ -111,5 +123,6 @@ struct CoupletView: View {
         }
         .padding()
     }
+    .azScreenBackground()
     .persianRoot()
 }

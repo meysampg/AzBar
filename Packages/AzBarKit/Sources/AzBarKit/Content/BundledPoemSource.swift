@@ -48,6 +48,26 @@ public actor BundledPoemSource: PoemSource {
         return p
     }
 
+    /// The category if the pack contains it; nil when absent. Throws only `ContentError.decoding`.
+    public func categoryIfPresent(id: CategoryID) throws -> PoemCategory? {
+        _ = try load()
+        return categoriesById[id]
+    }
+
+    public func poemIfPresent(id: PoemID) throws -> Poem? {
+        _ = try load()
+        return poemsById[id]
+    }
+
+    /// False when the pack fails to load.
+    public func containsCategory(_ id: CategoryID) -> Bool {
+        ((try? categoryIfPresent(id: id)) ?? nil) != nil
+    }
+
+    public func containsPoem(_ id: PoemID) -> Bool {
+        ((try? poemIfPresent(id: id)) ?? nil) != nil
+    }
+
     /// Number of poems in the pack (0 when it cannot be loaded).
     public func poemCount() -> Int {
         (try? load())?.poems.count ?? 0

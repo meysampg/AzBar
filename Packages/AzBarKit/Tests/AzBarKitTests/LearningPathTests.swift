@@ -93,3 +93,31 @@ import Foundation
         #expect(PathNodeState.locked < .mastered && PathNodeState.current < .completed)
     }
 }
+
+@Suite struct LearningPathShortPoemTests {
+    func ids(_ n: [PathNode]) -> [String] { n.map(\.id) }
+
+    @Test func singleLessonHasNoReviewOrChallenge() {
+        let one = LearningPath.layout(memorizableIndices: [0], config: LearningPathConfig(lessonSize: 2))
+        #expect(ids(one) == ["L0"])
+        #expect(one[0].ordinal == 0 && one[0].lessonNumber == 1)
+        let rubai = LearningPath.layout(memorizableIndices: [0, 1], config: LearningPathConfig(lessonSize: 2))
+        #expect(ids(rubai) == ["L0"])
+        let single = LearningPath.layout(memorizableIndices: [0, 1], config: LearningPathConfig(lessonSize: 2, reviewEvery: 1))
+        #expect(ids(single) == ["L0"])
+    }
+
+    @Test func rubaiWithLessonSizeOneKeepsFullPath() {
+        let n = LearningPath.layout(memorizableIndices: [0, 1], config: LearningPathConfig(lessonSize: 1))
+        #expect(ids(n) == ["L0", "L1", "R1", "C"])
+    }
+
+    @Test func startedSingleLessonIsCompletedWithNoCurrent() {
+        let t0 = Date(timeIntervalSince1970: 1_800_000_000)
+        let card = FSRSCard(stability: 1, difficulty: 5, due: t0, lastReview: t0, reps: 1, lapses: 0, state: .learning)
+        let nodes = LearningPath.build(memorizableIndices: [0], cards: [0: card], completedNodeIds: [],
+                                       config: LearningPathConfig(lessonSize: 2))
+        #expect(nodes.count == 1 && nodes[0].state == .completed)
+        #expect(LearningPath.currentNode(in: nodes) == nil)
+    }
+}

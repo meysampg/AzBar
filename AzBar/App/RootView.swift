@@ -44,13 +44,15 @@ struct RootView: View {
                 }
             }
         }
+        .tint(Theme.Palette.teal)
         .tabBarMinimizeBehavior(.onScrollDown)
-        .background { Color.clear.fullScreenCover(item: $model.learnRequest) { request in LearnView(request: request).persianRoot() } }
-        .background { Color.clear.fullScreenCover(isPresented: $model.isReviewPresented) { ReviewSessionView().persianRoot() } }
+        .background { Color.clear.fullScreenCover(item: $model.learnRequest) { request in LearnView(request: request).persianRoot().preferredColorScheme(.light) } }
+        .background { Color.clear.fullScreenCover(isPresented: $model.isReviewPresented) { ReviewSessionView().persianRoot().preferredColorScheme(.light) } }
         .background {
             Color.clear.sheet(isPresented: $model.isFalPresented) {
                 FalView()
                     .persianRoot()
+                    .preferredColorScheme(.light)
                     .presentationDetents([.large])
             }
         }
@@ -75,14 +77,14 @@ extension RootView {
     @ViewBuilder
     fileprivate var toastOverlay: some View {
         if let badge = gamification.pendingToasts.first {
-            HStack(spacing: Theme.Spacing.s) {
-                BadgeMedal(badge: badge, unlocked: true, size: 28)
-                Text("دستاورد تازه: \(badge.title)")
-                    .font(.app(.subheadline, weight: .semibold))
+            AzToast {
+                HStack(spacing: Theme.Spacing.s) {
+                    BadgeMedal(badge: badge, unlocked: true, size: 28)
+                    Text("دستاورد تازه: \(badge.title)")
+                        .font(.app(.subheadline, weight: .semibold))
+                        .foregroundStyle(Theme.Palette.ink)
+                }
             }
-            .padding(.horizontal, Theme.Spacing.l)
-            .padding(.vertical, Theme.Spacing.s)
-            .glassEffect(.regular, in: .capsule)
             .padding(.top, Theme.Spacing.s)
             .transition(.move(edge: .top).combined(with: .opacity))
             .accessibilityElement(children: .combine)

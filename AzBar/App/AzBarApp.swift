@@ -19,6 +19,8 @@ struct AzBarApp: App {
                 .environment(\.contentRepository, model.content)
                 .persianRoot()
                 .font(.app(.body))
+                .preferredColorScheme(.light)
+                .tint(Theme.Palette.teal)
                 .modelContainer(model.container)
         }
     }

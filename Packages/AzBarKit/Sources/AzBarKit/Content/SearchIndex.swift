@@ -42,12 +42,15 @@ public actor SearchIndex {
         built = true
     }
 
-    /// Returns hits in poem order. The query is normalized; queries shorter than 2 characters return nothing.
-    public func search(_ query: String, limit: Int = 100) -> [SearchHit] {
+    /// Returns hits in insertion order (a poet's hits are skipped once it reaches `perPoetLimit`). The query is normalized; queries shorter than 2 characters return nothing.
+    public func search(_ query: String, limit: Int = 100, perPoetLimit: Int = .max) -> [SearchHit] {
         let q = PersianText.normalizeForSearch(query)
         guard q.count >= 2, limit > 0 else { return [] }
         var hits: [SearchHit] = []
+        var perPoet: [Int: Int] = [:]
         for e in entries where e.normalized.range(of: q, options: .literal) != nil {
+            if perPoet[e.poetId, default: 0] >= perPoetLimit { continue }
+            perPoet[e.poetId, default: 0] += 1
             let id = e.verseId.map { "\(e.poemId):\(e.coupletIndex ?? -1):\($0)" } ?? "\(e.poemId):title"
             hits.append(SearchHit(id: id, poemId: e.poemId, poetId: e.poetId, poemTitle: e.poemTitle,
                                   coupletIndex: e.coupletIndex, matchedText: e.text))

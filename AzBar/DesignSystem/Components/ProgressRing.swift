@@ -10,15 +10,16 @@ struct ProgressRing: View {
 
     var body: some View {
         ZStack {
-            Circle().stroke(.quaternary, lineWidth: lineWidth)
+            Circle().stroke(Theme.Palette.track, lineWidth: lineWidth)
             Circle()
                 .trim(from: 0, to: clamped)
-                .stroke(.tint, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .stroke(Theme.Palette.teal, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .animation(.smooth, value: clamped)
             if showsPercent {
                 Text("\(Int((clamped * 100).rounded()).fa)٪")
                     .font(.app(.caption2, weight: .medium))
+                    .foregroundStyle(Theme.Palette.ink)
                     .minimumScaleFactor(0.6)
                     .lineLimit(1)
                     .padding(lineWidth + 2)
@@ -37,5 +38,6 @@ struct ProgressRing: View {
         ProgressRing(value: 0).frame(width: 30, height: 30)
     }
     .padding()
+    .azScreenBackground()
     .persianRoot()
 }
