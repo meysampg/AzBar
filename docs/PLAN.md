@@ -1250,3 +1250,38 @@ All paths are relative to the project root `/Users/meysam/Library/Application Su
 - Python's urllib fails SSL on this Mac (no CA certs). All network fetching in Python must shell out to `curl -sSfL` via subprocess. Fonts: use curl in fetch_fonts.sh.
 - Raw Ganjoor responses for Hafez are ALREADY cached in `Tools/.cache/poet-2/` as `poet-2.json`, `cat-{id}.json`, `poem-{id}.json` (692 poems, exact API query from §3c). `fetch_ganjoor.py` default cache dir = `Tools/.cache/poet-{id}`, so generating the pack needs no network.
 - Code-signing: leave DEVELOPMENT_TEAM unset; builds use `CODE_SIGNING_ALLOWED=NO`.
+
+## 10. WP0 placeholder views
+WP0 is complete: the build and `swift test` pass. These files are placeholders. The owning WP overwrites the whole file and keeps the signature. `RootView` uses exactly these call sites.
+
+| File (owner) | Declaration | Used by RootView as |
+|---|---|---|
+| `Features/Today/TodayView.swift` (WP4) | `struct TodayView: View` | `TodayView()` inside the Today `NavigationStack`, followed by `.libraryDestinations()` |
+| `Features/Library/LibraryRoute.swift` (WP3) | `enum LibraryRoute: Hashable { case poet(PoetID); case category(CategoryID, poetId: PoetID); case poem(PoemID, poetId: PoetID) }` and `extension View { func libraryDestinations() -> some View }` | applied to Today and Library roots |
+| `Features/Library/LibraryView.swift` (WP3) | `struct LibraryView: View` | `LibraryView()` inside the Library stack, followed by `.libraryDestinations()` |
+| `Features/Reader/ReaderView.swift` (WP3) | `struct ReaderView: View { init(poemId: PoemID, poetId: PoetID) }` | the `.poem` destination |
+| `Features/Fal/FalView.swift` (WP3) | `struct FalView: View` | `.sheet(isPresented: $model.isFalPresented) { FalView() }` |
+| `Features/Learn/LearnView.swift` (WP4) | `struct LearnView: View { init(request: LearnRequest) }` | `.fullScreenCover(item: $model.learnRequest)` |
+| `Features/Review/ReviewHomeView.swift` (WP4) | `struct ReviewHomeView: View` | `ReviewHomeView()` inside the Review stack |
+| `Features/Review/ReviewSessionView.swift` (WP4) | `struct ReviewSessionView: View` | `.fullScreenCover(isPresented: $model.isReviewPresented)` |
+| `Features/Settings/SettingsView.swift` (WP4) | `struct SettingsView: View` | `SettingsView()` inside the Settings stack |
+
+Every view above except `ReaderView` and `LearnView` has a parameterless `init()`. `RootView` supplies the `NavigationStack` for each tab, so tab roots must not add their own.
+
+**Stub files** (each starts with `// STUB (WPn): replace implementation, keep signatures`):
+- Kit: `ContentRepository` (WP0, real enough to read bundled packs), `FSRSScheduler`, `ClozeEngine`, `LearnSessionEngine`, `ReviewSessionEngine`, `PoemProgress` (WP2), `BundledPoemSource`, `GanjoorRemoteSource` (WP1).
+- App: `Persistence/SchemaV1.swift` (the SwiftData models are complete), `Persistence/ProgressStore.swift`, `Notifications/ReminderScheduler.swift` (WP2), `Audio/AudioPlayerService.swift` (WP3).
+
+**Additions and clarifications to the §3–§5 signatures** (no existing signature was changed):
+- `BundledPoemSource` and `GanjoorRemoteSource` exist as stubs because `ContentRepository.init` needs the types. `BundledPoemSource` already loads a pack and exposes `allPoems()`. `GanjoorRemoteSource` throws `.notFound` on every call. For a non-bundled poet, `ContentRepository.rootCategory(poetId:)` calls `remote.category(id: entry.rootCategoryId)`.
+- `SearchHit` is a top-level `public struct` in `ContentRepository.swift`. `ContentRepository.SearchHit` is a typealias for it. WP1 may move it as long as both spellings keep working.
+- `PoemProgress` has a public memberwise `init`, `static let empty`, `var fraction`, and `static func compute(cards:totalMemorizable:)`. `ProgressStore.progress` returns it.
+- `ContentError` is also `Equatable`.
+- `FSRSParameters.init(w:desiredRetention:maximumInterval:againStepMinutes:)` has defaults for every argument. `FSRSCard.init` has all fields as arguments.
+- `Theme` has `Spacing`, `Radius`, `color(for: Rating)` and `title(for: Rating)`. `title(for:)` returns the Persian rating title ("دوباره", "سخت", "خوب", "آسان").
+- `CoupletView` reads `AppSettings` as an optional environment value (`@Environment(AppSettings.self) var settings: AppSettings?`), defaulting to Naskh at 22 pt, so previews work without it. It gets the poem font and size from there. `transform` is `@escaping`.
+- `PreviewContainer { ... }` (in `PreviewFixtures.swift`) injects the full app environment. `PreviewFixtures.samplePoem` is Hafez ghazal 1.
+- `AppModel` has a designated `init(container:content:settings:)` used by `live()` and `preview()`.
+- Resources are flattened into the app bundle root, so `bundle.url(forResource: "pack-hafez", withExtension: "json")` works.
+- `pack-hafez.json` is currently a 2-poem sample (poems 2130 and 2131, categories 9 and 24). WP1 replaces it.
+- The test target does not link AzBarKit. Tests reach kit types through `@testable import AzBar`, which re-exports the kit.

@@ -1,0 +1,4 @@
+{"schemaVersion":1,"poets":[
+ {"id":2,"slug":"hafez","name":"حافظ","fullName":"حافظ شیرازی","rootCategoryId":9,"bundledPack":"pack-hafez","falCategoryId":24,"birthYearHijri":726,"deathYearHijri":792,"sortOrder":0,"isEnabled":true},
+ {"id":7,"slug":"saadi","name":"سعدی","fullName":"سعدی شیرازی","rootCategoryId":118,"bundledPack":null,"falCategoryId":null,"birthYearHijri":615,"deathYearHijri":694,"sortOrder":1,"isEnabled":true},
+ {"id":3,"slug":"khayyam","name":"خیام","fullName":"خیام نیشابوری","rootCategoryId":30,"bundledPack":null,"falCategoryId":null,"birthYearHijri":439,"deathYearHijri":526,"sortOrder":2,"isEnabled":true}]}
