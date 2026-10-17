@@ -20,6 +20,7 @@ struct PathMapView: View {
     @ScaledMetric(relativeTo: .title3) private var lessonBase: CGFloat = 64
     @ScaledMetric(relativeTo: .footnote) private var line: CGFloat = 20
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var bob = false
 
     init(nodes: [PathNode], beytRanges: [String: ClosedRange<Int>], partialNodeId: String?,
@@ -144,17 +145,17 @@ struct PathMapView: View {
         let p = geo.points[i]
         let ref = i + 1 < geo.points.count ? geo.points[i + 1].x : (i > 0 ? geo.points[i - 1].x : p.x)
         let travel = (i + 1 < geo.points.count ? 1 : -1) * (ref - p.x)   // >0: curve leaves toward +x
-        let gap: CGFloat = 12
+        let gap: CGFloat = 4   // + 8 pt capsule padding = 12 pt text gap
         let roomLeft = p.x - d / 2 - gap - 8
         let roomRight = CGFloat(geo.size.width) - p.x - d / 2 - gap - 8
-        let minRoom: CGFloat = 5 * line
         let preferRight = travel < 0 || (travel == 0 && roomRight >= roomLeft)
+        // Beside at normal sizes; below only at accessibility sizes.
         let side: Int = {   // -1 left, 1 right, 0 below
+            if dynamicTypeSize.isAccessibilitySize { return 0 }
             let pref = preferRight ? roomRight : roomLeft
             let other = preferRight ? roomLeft : roomRight
-            if pref >= minRoom { return preferRight ? 1 : -1 }
-            if travel == 0 && other >= minRoom { return preferRight ? -1 : 1 }
-            return 0
+            if pref < 56 && other > pref { return preferRight ? -1 : 1 }
+            return preferRight ? 1 : -1
         }()
         let labelWidth = CGFloat(min(Double(width) - 32, Double(9 * line)))
         let backing = Capsule().fill(Theme.Palette.paper.opacity(0.9))
@@ -167,14 +168,15 @@ struct PathMapView: View {
                 .position(x: p.x, y: p.y + d / 2 + 6 + labelBlock / 2)
                 .accessibilityHidden(true)
         } else {
-            let room = side > 0 ? roomRight : roomLeft
-            let w = min(room, labelWidth)
-            label(node, alignment: .leading)
+            let room = max(side > 0 ? roomRight : roomLeft, 40)
+            // Outer frame is LTR and anchors the content at the node edge; the label itself is RTL.
+            // Node sits at the visual left of a right-side label (RTL .trailing) and vice versa.
+            label(node, alignment: side > 0 ? .trailing : .leading)
                 .padding(.horizontal, 8)
                 .background(backing)
-                .frame(width: w, height: labelBlock, alignment: .leading)
                 .environment(\.layoutDirection, .rightToLeft)
-                .position(x: side > 0 ? p.x + d / 2 + gap + w / 2 : p.x - d / 2 - gap - w / 2, y: p.y)
+                .frame(width: room, height: labelBlock, alignment: side > 0 ? .leading : .trailing)
+                .position(x: side > 0 ? p.x + d / 2 + gap + room / 2 : p.x - d / 2 - gap - room / 2, y: p.y)
                 .accessibilityHidden(true)
         }
     }
@@ -205,7 +207,7 @@ struct PathMapView: View {
         }
         .lineLimit(1)
         .minimumScaleFactor(0.8)
-        .multilineTextAlignment(alignment == .center ? .center : .leading)
+        .multilineTextAlignment(alignment == .center ? .center : (alignment == .leading ? .leading : .trailing))
     }
 
     private func startBubble(isPartial: Bool) -> some View {

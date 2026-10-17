@@ -44,7 +44,8 @@ struct LibraryPoetRow: View {
 
     private var lifespan: String? {
         guard let birth = entry.birthYearHijri, let death = entry.deathYearHijri else { return nil }
-        return "\(entry.fullName) · \(birth.fa)–\(death.fa) ق"
+        // Word joiners and a no-break space keep the years together when the line wraps.
+        return "\(entry.fullName) · \(birth.fa)\u{2060}–\u{2060}\(death.fa)\u{00A0}ق"
     }
 
     var body: some View {

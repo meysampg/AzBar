@@ -52,6 +52,9 @@ struct FalView: View {
         .onChange(of: model.phase) { _, phase in
             if case .result = phase { gamification.recordFalOpened() }
         }
+        #if DEBUG
+        .onAppear { if DebugLaunch.screen == "fal-result" { model.confirmNiyyat() } }
+        #endif
         .task(id: model.requestId) {
             await model.open(content: content)
         }

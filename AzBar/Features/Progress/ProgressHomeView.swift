@@ -75,6 +75,9 @@ struct ProgressHomeView: View {
         }
         .azScreenBackground()
         .navigationTitle("پیشرفت")
+        #if DEBUG
+        .onAppear { if let badge = DebugLaunch.badge { selectedBadge = badge } }
+        #endif
         .sheet(item: $selectedBadge) { badge in
             BadgeDetailView(badge: badge, unlockedAt: unlocked[badge],
                             progress: BadgeCatalog.progress(badge, snapshot: snapshot))

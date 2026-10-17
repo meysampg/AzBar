@@ -16,4 +16,7 @@ struct LearnRequest: Identifiable, Hashable {
     let poemId: PoemID
     let poetId: PoetID
     var mode: LearnMode = .nextLesson
+    #if DEBUG
+    var debugTarget: String?
+    #endif
 }

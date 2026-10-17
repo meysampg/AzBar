@@ -36,6 +36,8 @@ xcrun simctl io booted screenshot docs/screenshots/01-reader.png
 
 Use the iPad Pro 13-inch (M4) simulator for the iPad set. Check the pixel size with `sips -g pixelWidth -g pixelHeight <file>`; it must match the table above exactly.
 
+Repo and README screenshots: `Tools/capture_screenshots.sh` builds the DEBUG app, installs it on the connected iPhone and captures every screen with `devicectl`, using the demo mode in `AzBar/App/DebugLaunch.swift` (`-AzBarDemo YES -AzBarScreen <name>`: in-memory seeded data, the real store is never touched). The output is downscaled to 1000 px in `docs/screenshots/`; these are not the App Store sizes above.
+
 On a device: press side button and volume-up together, then AirDrop the files to the Mac.
 
 ## Where files go

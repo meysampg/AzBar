@@ -22,7 +22,7 @@ struct RootView: View {
                 }
             }
             Tab("کتابخانه", systemImage: "books.vertical", value: AppTab.library) {
-                NavigationStack {
+                NavigationStack(path: $model.libraryPath) {
                     LibraryView()
                         .libraryDestinations()
                 }
@@ -57,10 +57,21 @@ struct RootView: View {
             }
         }
         .overlay(alignment: .top) { toastOverlay }
-        .task { gamification.reconcile() }
+        .task {
+            #if DEBUG
+            await DebugLaunch.run(model)
+            #endif
+            gamification.reconcile()
+            #if DEBUG
+            DebugLaunch.finishSeeding(gamification)
+            #endif
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active { gamification.reconcile() }
             guard phase == .background else { return }
+            #if DEBUG
+            if DebugLaunch.isDemo { return }  // never touch the real notification schedule
+            #endif
             Task {
                 await model.reminders.reschedule(
                     enabled: settings.remindersEnabled,

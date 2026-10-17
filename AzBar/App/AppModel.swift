@@ -17,6 +17,7 @@ final class AppModel {
     var learnRequest: LearnRequest?
     var isReviewPresented = false
     var isFalPresented = false
+    var libraryPath: [LibraryRoute] = []
 
     init(container: ModelContainer, content: ContentRepository, settings: AppSettings) {
         self.container = container
@@ -37,6 +38,9 @@ final class AppModel {
     }
 
     static func live() -> AppModel {
+        #if DEBUG
+        if DebugLaunch.isDemo { return DebugLaunch.makeModel() }
+        #endif
         let container: ModelContainer
         do {
             container = try ModelContainer(
@@ -58,7 +62,7 @@ final class AppModel {
         return AppModel(container: inMemoryContainer(), content: .live(bundle: .main), settings: AppSettings(defaults: suite))
     }
 
-    private static func inMemoryContainer() -> ModelContainer {
+    static func inMemoryContainer() -> ModelContainer {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         // An in-memory container for a valid schema cannot realistically fail.
         return try! ModelContainer(for: Schema(versionedSchema: AzBarSchemaV2.self),

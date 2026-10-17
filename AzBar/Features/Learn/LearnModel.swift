@@ -71,6 +71,9 @@ final class LearnModel {
                 progress.addPlan(poem: poem, poetName: content.catalog.entry(poem.poetId)?.name ?? "")
             }
             startBatch()
+            #if DEBUG
+            if let target = request.debugTarget { debugDrive(to: target) }
+            #endif
         } catch {
             phase = .failed
         }
@@ -402,3 +405,33 @@ final class LearnModel {
         return synced.first(where: { $0.type == 0 }) ?? synced.first
     }
 }
+
+#if DEBUG
+extension LearnModel {
+    /// Screenshot helper: plays the session correctly until the wanted step (`cloze`, `fillblank`,
+    /// `wordbank`) is on screen, or to the summary (`complete`).
+    func debugDrive(to target: String) {
+        for _ in 0..<300 {
+            guard phase == .session, let engine else { return }
+            switch (target, engine.currentStep) {
+            case ("cloze", .cloze(level: 2)?): return
+            case ("fillblank", .fillBlank?): return
+            case ("wordbank", .wordBank?): return
+            default: break
+            }
+            if engine.isGradedStep, !engine.isRevealed {
+                switch engine.currentExercise {
+                case .wordBank(let e): chosenTileIds = e.answer.map(\.id)
+                case .fillBlank(let e): selectedOption = e.correctOptionIndex
+                case nil: break
+                }
+                check()
+                continue
+            }
+            if engine.awaitsRating { rate(.good); continue }
+            if engine.isRecallStep, !engine.isRevealed { reveal(); continue }
+            next()
+        }
+    }
+}
+#endif

@@ -10,6 +10,9 @@ struct SettingsView: View {
 
     @State private var notificationStatus: UNAuthorizationStatus = .notDetermined
     @State private var reciters: [String] = []
+    #if DEBUG
+    @State private var debugShowAbout = DebugLaunch.screen == "about"
+    #endif
 
     var body: some View {
         @Bindable var settings = settings
@@ -30,6 +33,9 @@ struct SettingsView: View {
         .foregroundStyle(Theme.Palette.ink)
         .tint(Theme.Palette.teal)
         .navigationTitle("تنظیمات")
+        #if DEBUG
+        .navigationDestination(isPresented: $debugShowAbout) { AboutView() }
+        #endif
         .task {
             reciters = await content.recitationArtists()
             await refreshStatus()
