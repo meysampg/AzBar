@@ -4,10 +4,11 @@
 Usage:
   python3 -I Tools/fetch_ganjoor.py --poet-id 2 --slug hafez \
       [--out AzBar/Resources/Content/pack-hafez.json] [--cache Tools/.cache/poet-2] \
-      [--delay 0.5] [--only-cats 24,25]
+      [--delay 0.5] [--only-cats 24,25] [--no-summaries]
 
 Every raw response is cached as {cache}/{poet|cat|poem}-{id}.json, so re-runs resume and
-a fully cached poet needs no network. The couplet-building algorithm (PLAN.md section 3b)
+a fully cached poet needs no network. --no-summaries omits all Ganjoor poem/couplet summaries
+(meanings) from the pack. The couplet-building algorithm (docs/ARCHITECTURE.md)
 must stay identical to AzBarKit's GanjoorMapper.
 """
 import argparse
@@ -90,7 +91,7 @@ def build_couplets(verses):
         else:
             kind = "paragraph"
         summary = ""
-        for v in vs:
+        for v in (vs if INCLUDE_SUMMARIES else []):
             s = clean(v.get("coupletSummary"))
             if s:
                 summary = s
@@ -122,7 +123,7 @@ def build_poem(raw, poet_id, category_id):
     p = {"id": raw["id"], "poetId": poet_id, "categoryId": category_id,
          "title": clean(raw.get("title")), "fullTitle": clean(raw.get("fullTitle")),
          "urlSlug": raw.get("urlSlug") or "", "fullUrl": raw.get("fullUrl") or ""}
-    summary = clean(raw.get("poemSummary"))
+    summary = clean(raw.get("poemSummary")) if INCLUDE_SUMMARIES else ""
     if summary:
         p["summary"] = summary
     p["couplets"] = build_couplets(raw.get("verses") or [])
@@ -138,7 +139,11 @@ def memorizable_count(poem):
 
 # ---------- main ----------
 
+INCLUDE_SUMMARIES = True
+
+
 def main():
+    global INCLUDE_SUMMARIES
     ap = argparse.ArgumentParser()
     ap.add_argument("--poet-id", type=int, required=True)
     ap.add_argument("--slug", required=True)
@@ -146,7 +151,10 @@ def main():
     ap.add_argument("--cache")
     ap.add_argument("--delay", type=float, default=0.5)
     ap.add_argument("--only-cats", default="")
+    ap.add_argument("--no-summaries", action="store_true",
+                    help="do not write poem/couplet summaries (Ganjoor meanings)")
     a = ap.parse_args()
+    INCLUDE_SUMMARIES = not a.no_summaries
 
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     out_path = a.out or os.path.join(root, "AzBar", "Resources", "Content", f"pack-{a.slug}.json")

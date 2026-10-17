@@ -1,7 +1,7 @@
 import Testing
 @testable import AzBarKit
 
-@Suite struct PlaceholderTests {
+@Suite struct CoupletKeyAndTextTests {
     @Test func coupletKeyRoundTrips() {
         let k = CoupletKey(poemId: 2130, coupletIndex: 0)
         #expect(k.stringValue == "2130:0")

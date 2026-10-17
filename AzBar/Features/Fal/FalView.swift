@@ -101,6 +101,10 @@ private struct FalNiyyatView: View {
                     .padding(Theme.Spacing.xl)
                     .frame(maxWidth: .infinity)
                     .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
+                Text("فال حافظ رسمی دیرینه در فرهنگ ایرانی است: غزلی تصادفی از دیوان برای خواندن، تأمل و از بر کردن.")
+                    .font(.app(.footnote))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
             .padding(.horizontal, Theme.Spacing.l)
             .padding(.top, Theme.Spacing.xl)

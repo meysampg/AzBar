@@ -1,46 +1,6 @@
-# Implementation plan: "از بر" (AzBar), an iOS 26 Persian poetry memorization app
+# AzBar architecture
 
-## 0. What I checked and what it changes
-
-- **The workspace is empty.** `xcodebuild -version` reports Xcode 27.1, the SDK is iOS 27.1, and the toolchain is Swift 6.4.
-- **The only simulator runtime installed is iOS 18.4.** An app with deployment target 26.0 cannot run tests in a simulator on this Mac. Two consequences:
-  - **(a)** All pure logic goes into a local Swift package, `Packages/AzBarKit`, whose tests run on the macOS host with `swift test`. This works today.
-  - **(b)** The Xcode test target is compiled with `build-for-testing`. It can only be run after the user installs an iOS 26+ runtime with `xcodebuild -downloadPlatform iOS`. That is a user action and a large download.
-- **Font URLs.** I streamed each font and confirmed both the URL and the PostScript name (name table ID 6).
-  - Base URL for Vazirmatn: `https://github.com/rastikerdar/vazirmatn/raw/master/fonts/ttf/`
-    - `Vazirmatn-Regular.ttf` → `Vazirmatn-Regular`
-    - `Vazirmatn-Medium.ttf` → `Vazirmatn-Medium`
-    - `Vazirmatn-SemiBold.ttf` → `Vazirmatn-SemiBold`
-    - `Vazirmatn-Bold.ttf` → `Vazirmatn-Bold`
-  - Base URL for Noto: `https://github.com/notofonts/notofonts.github.io/raw/main/fonts/`
-    - `NotoNaskhArabic/hinted/ttf/NotoNaskhArabic-Regular.ttf` → `NotoNaskhArabic-Regular`
-    - `NotoNaskhArabic/hinted/ttf/NotoNaskhArabic-Bold.ttf` → `NotoNaskhArabic-Bold`
-    - `NotoNastaliqUrdu/hinted/ttf/NotoNastaliqUrdu-Regular.ttf` → `NotoNastaliqUrdu-Regular`
-  - Licences:
-    - `https://github.com/rastikerdar/vazirmatn/raw/master/OFL.txt`
-    - `https://github.com/google/fonts/raw/main/ofl/notonaskharabic/OFL.txt`
-    - `https://github.com/google/fonts/raw/main/ofl/notonastaliqurdu/OFL.txt`
-  - Use these static files, not the Google Fonts `[wght]` variable fonts. The weight is then chosen by PostScript name, which is reliable in SwiftUI.
-- **Ganjoor API.** I verified the poem shape.
-  - `versePosition` values seen in Hafez are 0 and 1.
-  - `coupletIndex` is 0-based. `vOrder` is 1-based.
-  - Recitation fields: `id, audioArtist, mp3Url, xmlText, audioOrder, recitationType, inSyncWithText`.
-- **Sync data quirk.** `GET https://api.ganjoor.net/api/audio/xml/2840` returns a **JSON-encoded string** that contains XML: `<DesktopGanjoorPoemAudioList><PoemAudio>…<SyncArray><SyncInfo><VerseOrder>0</VerseOrder><AudioMiliseconds>0</AudioMiliseconds>`. `VerseOrder` is a 0-based index into the verses sorted by `vOrder`. Ghazal 1 has 14 verses and VerseOrder runs 0…13. Ignore negative values and `<OneSecondBugFix>`.
-- **MP3 hosting.** The files are on `https://i.ganjoor.net/a/...mp3`. The server sends `accept-ranges: bytes`, so AVPlayer streaming works.
-- **Hafez category sizes.**
-
-  | id | Category | Poems |
-  |---|---|---|
-  | 24 | غزلیات | 495 |
-  | 25 | قطعات | 34 |
-  | 26 | رباعیات | 42 |
-  | 27 | قصاید | 3 |
-  | 674 | اشعار منتسب | 118 |
-
-  The total is 692 poems and none of these categories has subcategories. Root category is 9.
-- **Other poets.** From `/api/ganjoor/poets`: Saadi is id 7 with root category 118. Khayyam is id 3 with root category 30.
-- **Recommendation: bundle all 5 Hafez categories (692 poems).** The pack is roughly 7–10 MB minified (texts, couplet summaries and recitation metadata) and compresses well in the IPA. Fal uses only غزلیات (24).
-- **FSRS-5 reference vectors.** I computed these with Python for the default parameters below; they are used in §4.
+AzBar («از بر») is an iOS 26 app for memorizing Persian poetry. This document describes how it is built: the module layout, data schemas, the memorization engine, the app-layer contracts, the screens, the Ganjoor API behaviour the code depends on, and how to test.
 
 ## 1. Architecture
 
@@ -85,11 +45,10 @@ Tools/fetch_fonts.sh   → AzBar/Resources/Fonts/*.ttf
 - AVPlayer and notification callbacks use `queue: .main` plus `MainActor.assumeIsolated { }`.
 - No `static var`. Use `static let` only.
 
-**Strings decision**
-- Use Persian string literals inline (`Text("مرور")` is a `LocalizedStringKey`).
-- Set `developmentRegion = fa`, `knownRegions = (fa, Base)`, and `CFBundleLocalizations = [fa]`.
-- Add a `Localizable.xcstrings` with `sourceLanguage: "fa"` and empty `strings`. `SWIFT_EMIT_LOC_STRINGS = YES` lets Xcode extract later.
-- Why: parallel agents have no key-naming collisions or indirection, the code reads as the UI reads, and it remains localizable later.
+**Strings**
+- Persian UI strings are inline literals (`Text("مرور")` is a `LocalizedStringKey`): no key indirection, the code reads as the UI reads.
+- `developmentRegion = fa`, `knownRegions = (fa, Base)`, and `CFBundleLocalizations = [fa]`.
+- `Localizable.xcstrings` has `sourceLanguage: "fa"`; `SWIFT_EMIT_LOC_STRINGS = YES` lets Xcode extract strings when a second language is added.
 - Poem text always goes through `Text(verbatim:)` or a `String` variable, never a literal key.
 
 **RTL and locale**
@@ -100,488 +59,29 @@ Tools/fetch_fonts.sh   → AzBar/Resources/Fonts/*.ttf
   - `.environment(\.calendar, Calendar(identifier: .persian))`
 - Never interpolate a raw `Int` or `Double` into UI text. Always use `n.fa` from `PersianNumber`.
 
-## 2. Repository layout (every file, owner work package in brackets)
 
-**Uniqueness rule:** every filename inside `AzBar/` must be unique.
-- Synchronized groups flatten resources into the bundle root.
-- Swift files with the same name in different folders fail with "filename used twice".
-- So licence files are named `Vazirmatn-OFL.txt` and so on, not `OFL.txt`.
+## 2. Repository layout
 
 ```
-.gitignore                                   [WP0] Tools/.cache/ build/ DerivedData/ xcuserdata/ .build/ .swiftpm/
-Config/Info.plist                            [WP0] (outside synced folder; merged with generated plist)
-AzBar.xcodeproj/project.pbxproj              [WP0] (§2a)
-AzBar.xcodeproj/xcshareddata/xcschemes/AzBar.xcscheme [WP0] (§2b)
-Tools/fetch_fonts.sh                         [WP0] curl -fL the 7 ttf + 3 licences into AzBar/Resources/Fonts/
-Tools/fetch_ganjoor.py                       [WP1] (§3c)
-Packages/AzBarKit/Package.swift              [WP0]
-Packages/AzBarKit/Sources/AzBarKit/
-  Models/Poet.swift                          [WP0] Poet, CategoryRef
-  Models/PoemCategory.swift                  [WP0] PoemCategory, PoemSummary
-  Models/Poem.swift                          [WP0] Poem (+ helpers), Verse
-  Models/Couplet.swift                       [WP0] Couplet, CoupletKind
-  Models/Recitation.swift                    [WP0] Recitation, SyncPoint
-  Models/CoupletKey.swift                    [WP0]
-  Models/PoetCatalog.swift                   [WP0] PoetCatalog, PoetCatalogEntry
-  Models/ContentPack.swift                   [WP0]
-  Text/PersianText.swift                     [WP0] normalizeForSearch, removingDiacritics
-  Text/PersianTokenizer.swift                [WP0] MesraToken, tokenize
-  Text/PersianStopwords.swift                [WP0]
-  Content/PoemSource.swift                   [WP0] protocol + ContentError
-  Content/ContentRepository.swift            [WP0 stub → WP1]
-  Content/BundledPoemSource.swift            [WP1]
-  Content/GanjoorEndpoints.swift             [WP1]
-  Content/GanjoorDTOs.swift                  [WP1]
-  Content/GanjoorMapper.swift                [WP1]
-  Content/GanjoorRemoteSource.swift          [WP1]
-  Content/DiskCache.swift                    [WP1]
-  Content/SearchIndex.swift                  [WP1]
-  Content/RecitationSync.swift               [WP1] parser + loader
-  Memorization/FSRSTypes.swift               [WP0] Rating, CardState, FSRSCard, FSRSParameters, SchedulingResult
-  Memorization/FSRSScheduler.swift           [WP0 stub → WP2]
-  Memorization/SeededRandom.swift            [WP2] FNV1a64, SplitMix64
-  Memorization/ClozeEngine.swift             [WP0 stub → WP2]
-  Memorization/LearnSessionEngine.swift      [WP0 stub → WP2]
-  Memorization/ReviewSessionEngine.swift     [WP0 stub → WP2]
-  Memorization/PoemProgress.swift            [WP2]
-Packages/AzBarKit/Tests/AzBarKitTests/       [WP1/WP2] (§7) + Fixtures/
-AzBar/
-  App/AzBarApp.swift                         [WP0]
-  App/Exports.swift                          [WP0] `@_exported import AzBarKit`
-  App/AppModel.swift                         [WP0]
-  App/AppSettings.swift                      [WP0]
-  App/AppTab.swift                           [WP0] enum AppTab, LearnRequest
-  App/RootView.swift                         [WP0 skeleton; WP4 fills Today/Review/Settings, WP3 Library]
-  App/EnvironmentKeys.swift                  [WP0] @Entry contentRepository
-  Persistence/SchemaV1.swift                 [WP0 stub → WP2]
-  Persistence/ProgressStore.swift            [WP0 stub → WP2]
-  Notifications/ReminderScheduler.swift      [WP0 stub → WP2]
-  Audio/AudioPlayerService.swift             [WP0 stub → WP3]
-  Audio/RecitationPicker.swift               [WP3]
-  DesignSystem/AppFonts.swift                [WP0] PoemFont, AppFontWeight, Font.app/.poem
-  DesignSystem/UIKitAppearance.swift         [WP0]
-  DesignSystem/PersianNumber.swift           [WP0]
-  DesignSystem/IntervalFormatter.swift       [WP0]
-  DesignSystem/Theme.swift                   [WP0] spacing, corner radii, rating colors
-  DesignSystem/Components/MesraText.swift    [WP0]
-  DesignSystem/Components/CoupletView.swift  [WP0]
-  DesignSystem/Components/FlowLayout.swift   [WP4]
-  DesignSystem/Components/ClozeMesraView.swift [WP4]
-  DesignSystem/Components/RatingBar.swift    [WP4]
-  DesignSystem/Components/PlayerBar.swift    [WP3]
-  DesignSystem/Components/HoldToConfirmButton.swift [WP3]
-  DesignSystem/Components/ProgressRing.swift [WP4]
-  DesignSystem/Preview/PreviewFixtures.swift [WP0] samplePoem (Hafez ghazal 1, 3 beyts), PreviewContainer
-  Features/Library/LibraryRoute.swift        [WP3] + View.libraryDestinations()
-  Features/Library/LibraryView.swift         [WP3]
-  Features/Library/PoetView.swift            [WP3]
-  Features/Library/CategoryView.swift        [WP3]
-  Features/Library/PoemRow.swift             [WP3]
-  Features/Library/SearchResultsView.swift   [WP3]
-  Features/Reader/ReaderView.swift           [WP3]
-  Features/Reader/ReaderModel.swift          [WP3]
-  Features/Reader/ReaderHeaderView.swift     [WP3]
-  Features/Fal/FalView.swift                 [WP3]
-  Features/Fal/FalModel.swift                [WP3]
-  Features/Today/TodayView.swift             [WP4]
-  Features/Today/StreakCard.swift            [WP4]
-  Features/Today/ContinueLearningRow.swift   [WP4]
-  Features/Learn/LearnView.swift             [WP4]
-  Features/Learn/LearnModel.swift            [WP4]
-  Features/Learn/LearnStepViews.swift        [WP4]
-  Features/Learn/LearnSummaryView.swift      [WP4]
-  Features/Review/ReviewHomeView.swift       [WP4]
-  Features/Review/ReviewSessionView.swift    [WP4]
-  Features/Review/ReviewSessionModel.swift   [WP4]
-  Features/Review/ReviewSummaryView.swift    [WP4]
-  Features/Settings/SettingsView.swift       [WP4]
-  Features/Settings/AboutView.swift          [WP4]
-  Resources/Localizable.xcstrings            [WP0] {"sourceLanguage":"fa","strings":{},"version":"1.0"}
-  Resources/Assets.xcassets/Contents.json, AccentColor.colorset (light #0F6E78, dark #4FC3C9), AppIcon.appiconset (single 1024 universal) [WP0]
-  Resources/Fonts/*.ttf, *-OFL.txt           [WP0 via fetch_fonts.sh]
-  Resources/Content/poets-catalog.json       [WP0]
-  Resources/Content/pack-hafez.json          [WP1 via script]
-AzBarTests/ProgressStoreTests.swift, AppSettingsTests.swift, PersianNumberTests.swift, BundledContentSmokeTests.swift [WP2/WP0/WP1]
+Config/Info.plist                 merged with the generated plist
+AzBar.xcodeproj                   objectVersion 77, synchronized folder groups, local package reference
+Tools/                            fetch_ganjoor.py, cache_ganjoor_raw.py, fetch_fonts.sh
+Packages/AzBarKit/                Package.swift, Sources/AzBarKit/{Models,Text,Content,Memorization}, Tests/AzBarKitTests (+ Fixtures)
+AzBar/App/                        AzBarApp, Exports, AppModel, AppSettings, AppTab, RootView, EnvironmentKeys
+AzBar/Persistence/                SchemaV1, ProgressStore
+AzBar/Notifications/              ReminderScheduler
+AzBar/Audio/                      AudioPlayerService, RecitationPicker
+AzBar/DesignSystem/               AppFonts, UIKitAppearance, PersianNumber, IntervalFormatter, Theme,
+                                  Components/{MesraText, CoupletView, FlowLayout, ClozeMesraView, RatingBar,
+                                  PlayerBar, HoldToConfirmButton, ProgressRing}, Preview/PreviewFixtures
+AzBar/Features/                   Today, Library, Reader, Learn, Review, Fal, Settings
+AzBar/Resources/                  Assets.xcassets, Fonts, Content/{poets-catalog.json, pack-hafez.json}, Localizable.xcstrings
+AzBarTests/                       ProgressStoreTests, AppSettingsTests, PersianNumberTests, BundledContentSmokeTests
 ```
 
-### 2a. project.pbxproj (objectVersion 77, synchronized groups, local package)
+**Filename uniqueness.** Every filename inside `AzBar/` must be unique: synchronized groups flatten resources into the bundle root, and Swift files with the same name in different folders fail with "filename used twice". Licence files are therefore named `Vazirmatn-OFL.txt`, not `OFL.txt`.
 
-Write this verbatim. The 24-hex IDs are arbitrary but must stay consistent.
-
-```
-// !$*UTF8*$!
-{
-	archiveVersion = 1;
-	classes = {
-	};
-	objectVersion = 77;
-	objects = {
-
-/* Begin PBXBuildFile section */
-		AB0000000000000000000062 /* AzBarKit in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000000000000000000061 /* AzBarKit */; };
-/* End PBXBuildFile section */
-
-/* Begin PBXContainerItemProxy section */
-		AB0000000000000000000050 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = AB0000000000000000000001 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = AB0000000000000000000030;
-			remoteInfo = AzBar;
-		};
-/* End PBXContainerItemProxy section */
-
-/* Begin PBXFileReference section */
-		AB0000000000000000000005 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		AB0000000000000000000010 /* AzBar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AzBar.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		AB0000000000000000000011 /* AzBarTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AzBarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-/* End PBXFileReference section */
-
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		AB0000000000000000000020 /* AzBar */ = {isa = PBXFileSystemSynchronizedRootGroup; path = AzBar; sourceTree = "<group>"; };
-		AB0000000000000000000021 /* AzBarTests */ = {isa = PBXFileSystemSynchronizedRootGroup; path = AzBarTests; sourceTree = "<group>"; };
-/* End PBXFileSystemSynchronizedRootGroup section */
-
-/* Begin PBXFrameworksBuildPhase section */
-		AB0000000000000000000041 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				AB0000000000000000000062 /* AzBarKit in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		AB0000000000000000000044 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
-
-/* Begin PBXGroup section */
-		AB0000000000000000000002 = {
-			isa = PBXGroup;
-			children = (
-				AB0000000000000000000020 /* AzBar */,
-				AB0000000000000000000021 /* AzBarTests */,
-				AB0000000000000000000004 /* Config */,
-				AB0000000000000000000003 /* Products */,
-			);
-			sourceTree = "<group>";
-		};
-		AB0000000000000000000003 /* Products */ = {
-			isa = PBXGroup;
-			children = (
-				AB0000000000000000000010 /* AzBar.app */,
-				AB0000000000000000000011 /* AzBarTests.xctest */,
-			);
-			name = Products;
-			sourceTree = "<group>";
-		};
-		AB0000000000000000000004 /* Config */ = {
-			isa = PBXGroup;
-			children = (
-				AB0000000000000000000005 /* Info.plist */,
-			);
-			path = Config;
-			sourceTree = "<group>";
-		};
-/* End PBXGroup section */
-
-/* Begin PBXNativeTarget section */
-		AB0000000000000000000030 /* AzBar */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = AB0000000000000000000073 /* Build configuration list for PBXNativeTarget "AzBar" */;
-			buildPhases = (
-				AB0000000000000000000040 /* Sources */,
-				AB0000000000000000000041 /* Frameworks */,
-				AB0000000000000000000042 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				AB0000000000000000000020 /* AzBar */,
-			);
-			name = AzBar;
-			packageProductDependencies = (
-				AB0000000000000000000061 /* AzBarKit */,
-			);
-			productName = AzBar;
-			productReference = AB0000000000000000000010 /* AzBar.app */;
-			productType = "com.apple.product-type.application";
-		};
-		AB0000000000000000000031 /* AzBarTests */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = AB0000000000000000000076 /* Build configuration list for PBXNativeTarget "AzBarTests" */;
-			buildPhases = (
-				AB0000000000000000000043 /* Sources */,
-				AB0000000000000000000044 /* Frameworks */,
-				AB0000000000000000000045 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				AB0000000000000000000051 /* PBXTargetDependency */,
-			);
-			fileSystemSynchronizedGroups = (
-				AB0000000000000000000021 /* AzBarTests */,
-			);
-			name = AzBarTests;
-			packageProductDependencies = (
-			);
-			productName = AzBarTests;
-			productReference = AB0000000000000000000011 /* AzBarTests.xctest */;
-			productType = "com.apple.product-type.bundle.unit-test";
-		};
-/* End PBXNativeTarget section */
-
-/* Begin PBXProject section */
-		AB0000000000000000000001 /* Project object */ = {
-			isa = PBXProject;
-			attributes = {
-				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2710;
-				LastUpgradeCheck = 2710;
-				TargetAttributes = {
-					AB0000000000000000000030 = {
-						CreatedOnToolsVersion = 27.1;
-					};
-					AB0000000000000000000031 = {
-						CreatedOnToolsVersion = 27.1;
-						TestTargetID = AB0000000000000000000030;
-					};
-				};
-			};
-			buildConfigurationList = AB0000000000000000000070 /* Build configuration list for PBXProject "AzBar" */;
-			developmentRegion = fa;
-			hasScannedForEncodings = 0;
-			knownRegions = (
-				fa,
-				Base,
-			);
-			mainGroup = AB0000000000000000000002;
-			minimizedProjectReferenceProxies = 1;
-			packageReferences = (
-				AB0000000000000000000060 /* XCLocalSwiftPackageReference "Packages/AzBarKit" */,
-			);
-			preferredProjectObjectVersion = 77;
-			productRefGroup = AB0000000000000000000003 /* Products */;
-			projectDirPath = "";
-			projectRoot = "";
-			targets = (
-				AB0000000000000000000030 /* AzBar */,
-				AB0000000000000000000031 /* AzBarTests */,
-			);
-		};
-/* End PBXProject section */
-
-/* Begin PBXResourcesBuildPhase section */
-		AB0000000000000000000042 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		AB0000000000000000000045 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXResourcesBuildPhase section */
-
-/* Begin PBXSourcesBuildPhase section */
-		AB0000000000000000000040 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		AB0000000000000000000043 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		AB0000000000000000000051 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = AB0000000000000000000030 /* AzBar */;
-			targetProxy = AB0000000000000000000050 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
-
-/* Begin XCBuildConfiguration section */
-		AB0000000000000000000071 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
-					"$(inherited)",
-				);
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = iphoneos;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 6.0;
-			};
-			name = Debug;
-		};
-		AB0000000000000000000072 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				ENABLE_NS_ASSERTIONS = NO;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				SDKROOT = iphoneos;
-				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 6.0;
-				VALIDATE_PRODUCT = YES;
-			};
-			name = Release;
-		};
-		AB0000000000000000000074 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_PREVIEWS = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Config/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "از بر";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.github.meysampg.azbar;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		AB0000000000000000000075 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				/* identical to AB…74 */
-			};
-			name = Release;
-		};
-		AB0000000000000000000077 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				BUNDLE_LOADER = "$(TEST_HOST)";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				GENERATE_INFOPLIST_FILE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.github.meysampg.azbar.tests;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = iphoneos;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SWIFT_EMIT_LOC_STRINGS = NO;
-				SWIFT_VERSION = 6.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AzBar.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/AzBar";
-			};
-			name = Debug;
-		};
-		AB0000000000000000000078 /* Release */ = { /* identical to AB…77, name = Release */ };
-/* End XCBuildConfiguration section */
-
-/* Begin XCConfigurationList section */
-		AB0000000000000000000070 /* Build configuration list for PBXProject "AzBar" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				AB0000000000000000000071 /* Debug */,
-				AB0000000000000000000072 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		AB0000000000000000000073 /* … "AzBar" */ = { isa = XCConfigurationList; buildConfigurations = ( AB0000000000000000000074, AB0000000000000000000075, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-		AB0000000000000000000076 /* … "AzBarTests" */ = { isa = XCConfigurationList; buildConfigurations = ( AB0000000000000000000077, AB0000000000000000000078, ); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-/* End XCConfigurationList section */
-
-/* Begin XCLocalSwiftPackageReference section */
-		AB0000000000000000000060 /* XCLocalSwiftPackageReference "Packages/AzBarKit" */ = {
-			isa = XCLocalSwiftPackageReference;
-			relativePath = Packages/AzBarKit;
-		};
-/* End XCLocalSwiftPackageReference section */
-
-/* Begin XCSwiftPackageProductDependency section */
-		AB0000000000000000000061 /* AzBarKit */ = {
-			isa = XCSwiftPackageProductDependency;
-			productName = AzBarKit;
-		};
-/* End XCSwiftPackageProductDependency section */
-	};
-	rootObject = AB0000000000000000000001 /* Project object */;
-}
-```
-
-Notes for writing the file:
-- Release blocks must contain the settings in full; do not leave the comment placeholders in the file.
-- `Config/Info.plist` is outside the synchronized folder on purpose. If it were inside, Xcode would report "Multiple commands produce Info.plist".
-- If `import AzBarKit` fails in the test target, add `AB…61` to the test target's `packageProductDependencies`.
-
-**Config/Info.plist**
-- `UIAppFonts` array lists these 7 files: `Vazirmatn-Regular.ttf`, `Vazirmatn-Medium.ttf`, `Vazirmatn-SemiBold.ttf`, `Vazirmatn-Bold.ttf`, `NotoNaskhArabic-Regular.ttf`, `NotoNaskhArabic-Bold.ttf`, `NotoNastaliqUrdu-Regular.ttf`.
-- `UIBackgroundModes` = `[audio]`.
-- `CFBundleLocalizations` = `[fa]`.
-- `ITSAppUsesNonExemptEncryption` = `false`.
-
-### 2b. AzBar.xcscheme
-
-Standard scheme, version 1.7:
-- `BuildAction` has one entry with `BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="AB0000000000000000000030" BuildableName="AzBar.app" BlueprintName="AzBar" ReferencedContainer="container:AzBar.xcodeproj"`.
-- `TestAction` (`buildConfiguration="Debug"`) has `<Testables><TestableReference skipped="NO">` pointing at `AB0000000000000000000031` / `AzBarTests.xctest`.
-- `LaunchAction` runs `AzBar.app`.
-
-### 2c. Package.swift
+### Package.swift
 
 ```swift
 // swift-tools-version: 6.2
@@ -670,20 +170,19 @@ Adding a poet means adding an entry. To ship it offline as well, run the script 
 
 ### 3c. Tools/fetch_ganjoor.py (stdlib only)
 
-- **CLI:** `python3 Tools/fetch_ganjoor.py --poet-id 2 --slug hafez [--out AzBar/Resources/Content/pack-hafez.json] [--cache Tools/.cache/ganjoor] [--delay 0.5] [--only-cats 24,25]`
-- **Fetching:** `urllib.request` with `User-Agent: AzBar-ContentTool/1.0` and a 30 s timeout.
-  - Retries: 5 attempts with exponential backoff (1, 2, 4, 8, 16 s) on 429, 5xx or URLError.
-  - Sleep `--delay` seconds after every network call. Cache hits skip the sleep.
-- **Resumable:** every raw response is written to `{cache}/{poet|cat|poem}-{id}.json`. If the file exists it is reused, so a re-run resumes where it stopped.
+- **CLI:** `python3 -I Tools/fetch_ganjoor.py --poet-id 2 --slug hafez [--out AzBar/Resources/Content/pack-hafez.json] [--cache Tools/.cache/poet-2] [--delay 0.5] [--only-cats 24,25] [--no-summaries]`.
+- **Fetching:** shells out to `curl -sSfL` (`User-Agent: AzBar-ContentTool/1.0`, 30 s timeout) so it uses the system trust store; Python builds without CA certificates cannot verify TLS through `urllib`. Five attempts with exponential backoff; `--delay` seconds of sleep after every network call (cache hits skip it).
+- **Resumable:** every raw response is written to `{cache}/{poet|cat|poem}-{id}.json` and reused on re-runs. A fully cached poet needs no network. `Tools/cache_ganjoor_raw.py <poet-id> <cache-dir>` pre-populates the same cache.
 - **Steps:**
-  1. `GET /api/ganjoor/poet/{id}` → poet and root category.
+  1. `GET /api/ganjoor/poet/{id}` gives the poet and its root category.
   2. Breadth-first over categories: `GET /api/ganjoor/cat/{id}?poems=true`, then recurse into `cat.children`.
   3. For each poem: `GET /api/ganjoor/poem/{id}?verseDetails=true&recitations=true&catInfo=false&rhymes=false&next=false&prev=false&images=false&songs=false&comments=false&navigation=false&relatedpoems=false`.
   4. Map with the algorithm in 3b and write a minified file (`separators=(",",":")`).
-  5. Print stats: poem count, couplet count, file size in MB.
+  5. Print stats: poem count, couplet count, file size.
+- `--no-summaries` omits every Ganjoor poem and couplet summary (the meanings) from the pack.
 - **Ordering:** poems follow API order within a category; categories are in breadth-first order.
-- **Size guard:** if the output exceeds 15 MB, keep only the first 8 recitations per poem.
-- **Runtime:** expect about 700 requests, roughly 6–7 minutes.
+- **Size guard:** if the output exceeds 15 MB, only the first 8 recitations per poem are kept.
+- **Runtime:** a full poet is about 700 requests, roughly 6 to 7 minutes.
 
 ### 3d. SwiftData (`Persistence/SchemaV1.swift`)
 
@@ -895,14 +394,14 @@ var counts: [Rating: Int]
 - After Again, reinsert the item at `min(position + 3, end)`, carrying the updated card.
 - Requeue an item at most twice per session.
 
-**Queue source:** `ProgressStore.dueCards(until: startOfTomorrow, limit: dailyReviewLimit)`, sorted by `(due, poemId, coupletIndex)`.
+**Queue source:** `ProgressStore.dueItems(until: startOfTomorrow, limit: dailyReviewLimit)`, sorted by `(due, poemId, coupletIndex)`.
 
 **`PoemProgress.compute(cards: [FSRSCard], totalMemorizable: Int)`**
 - Returns `{ total, notStarted, learning, young, mature }`.
 - Young means state `.review` with S < 21. Mature means S ≥ 21.
 - `fraction = (0.25·learning + 0.6·young + 1.0·mature) / total`.
 
-## 5. App layer contracts (code against these exact signatures)
+## 5. App layer contracts
 
 ```swift
 // App
@@ -1057,7 +556,7 @@ struct CoupletView: View { couplet: Couplet; layout: CoupletLayout; isHighlighte
   - the Fal hold button.
 - Toolbars and the tab bar get glass automatically. The `TabView` uses `.tabBarMinimizeBehavior(.onScrollDown)`. Use `ToolbarSpacer` to group toolbar items.
 
-## 6. Screens (HIG components and strings)
+## 6. Screens
 
 **RootView**
 - `TabView(selection: $model.selectedTab)` with four tabs:
@@ -1107,7 +606,7 @@ struct CoupletView: View { couplet: Couplet; layout: CoupletLayout; isHighlighte
 - **Bottom `.safeAreaInset`:** a `GlassEffectContainer` with an `HStack` of the `PlayerBar` capsule and a CTA.
   - PlayerBar: play/pause `play.fill`/`pause.fill`, a reciter `Menu` labelled "خوانش: \(artist)", elapsed and total time in Persian digits, `gobackward.10`.
   - CTA: "حفظ کن" (`.glassProminent`) when there is no plan, or "ادامهٔ حفظ" when there is one.
-  - The bar collapses to the play button alone when the tab bar is minimized (`@Environment(\.tabViewBottomAccessoryPlacement)` is unavailable here, so compute it from scroll).
+  - The bar collapses to the play button alone when the tab bar is minimized (derived from scroll state).
   - Tapping "حفظ کن" adds the plan, then calls `startLearning`.
 - **Audio sync:**
   - The couplet for `audio.currentVerseOffset` is highlighted. `ScrollViewReader` auto-scrolls to it with `.scrollPosition`.
@@ -1162,10 +661,7 @@ struct CoupletView: View { couplet: Couplet; layout: CoupletLayout; isHighlighte
   - `Picker("هدف یادسپاری")` with options ۸۵٪ / ۹۰٪ / ۹۵٪.
   - `Stepper("سقف مرور روزانه")` from 20 to 500 in steps of 10.
 - **Section "خوانش":** `Picker("خوانندهٔ ترجیحی")` with "خودکار" plus the list from `recitationArtists(poetId: 2)`.
-- **Section "دربارهٔ برنامه":** `NavigationLink("دربارهٔ از بر")` to `AboutView`, which contains:
-  - "متن، معنی و خوانش‌ها از گنجور (ganjoor.net)" with a link;
-  - font credits "وزیرمتن، نوتو نسخ عربی، نوتو نستعلیق اردو — SIL OFL 1.1";
-  - the version number.
+- **Section "دربارهٔ برنامه":** `NavigationLink("دربارهٔ از بر")` to `AboutView`, which contains the Ganjoor attribution with a link, the open-source links (source code, issue tracker, privacy policy) and the MIT licence note, font credits (Vazirmatn, Noto Naskh Arabic, Noto Nastaliq Urdu, SIL OFL 1.1), and the version number.
 
 **Other UI rules**
 - Every icon-only button needs `.accessibilityLabel` in Persian.
@@ -1173,33 +669,30 @@ struct CoupletView: View { couplet: Couplet; layout: CoupletLayout; isHighlighte
 - Use system semantic colors so dark mode works.
 - `ProgressView` tint uses AccentColor.
 
-## 7. Work packages
+## 7. Ganjoor API notes
 
-**WP0 — Foundation and contracts (sequential, first; one agent).** The build must pass at the end.
-1. `Tools/fetch_fonts.sh`, then run it.
-2. Assets, `Config/Info.plist`, pbxproj and scheme exactly as in §2.
-3. Package.swift, the kit Models and the kit Text files (complete).
-4. `FSRSTypes.swift` (complete).
-5. Contract stubs with exact signatures: `ContentRepository` (returns preview or bundled data, `fatalError`-free; throws `.notFound` where needed), `FSRSScheduler.next`, `ClozeEngine`, `LearnSessionEngine`, `ReviewSessionEngine`, `SchemaV1`, `ProgressStore`, `ReminderScheduler`, `AudioPlayerService`. Bodies should be minimal but compile.
-6. All of App/ and the DesignSystem core: AppFonts, UIKitAppearance, PersianNumber, IntervalFormatter, Theme, MesraText, CoupletView, PreviewFixtures.
-7. RootView with tabs whose content is placeholder `Text` views. Each owner WP replaces its placeholders.
-8. `poets-catalog.json`, plus a minimal `pack-hafez.json` with 2 poems so the app runs before WP1 finishes.
+Base URL `https://api.ganjoor.net`; recitation audio is hosted on `https://i.ganjoor.net`.
 
-**Then in parallel** (each agent owns only its listed files; it may add files in its own folders; it must never change a contract signature, only add to it):
-- **WP1 — Content.** `fetch_ganjoor.py`; generate `pack-hafez.json`; the kit Content/ files; fixtures fetched with curl (`ganjoor-poem-2130.json`, `ganjoor-cat-26.json`, `ganjoor-poet-2.json`, `sync-2840.json`, `pack-mini.json`); the kit content tests; `AzBarTests/BundledContentSmokeTests.swift`.
-- **WP2 — Memorization and persistence.** `SeededRandom`, FSRSScheduler, ClozeEngine, LearnSessionEngine, ReviewSessionEngine and PoemProgress, with their tests; `Persistence/*`, `ReminderScheduler`, `AzBarTests/ProgressStoreTests.swift` (in-memory `ModelConfiguration(isStoredInMemoryOnly: true)`, tests marked `@MainActor`).
-- **WP3 — Library, Reader, Audio, Fal.** `Features/Library|Reader|Fal`, `Audio/*`, `PlayerBar`, `HoldToConfirmButton`, and the Library tab in RootView.
-- **WP4 — Today, Learn, Review, Settings.** `Features/Today|Learn|Review|Settings`, `FlowLayout`, `ClozeMesraView`, `RatingBar`, `ProgressRing`, and those tabs in RootView. RootView edits are limited to replacing the placeholders for its own tabs.
+- **Poem shape.** `versePosition` values seen in Hafez are 0 and 1 (and 2, 4, -1 elsewhere); `coupletIndex` is 0-based; `vOrder` is 1-based. Recitation fields: `id, audioArtist, mp3Url, xmlText, audioOrder, recitationType, inSyncWithText`.
+- **Sync data quirk.** `GET /api/audio/xml/{recitationId}` (for example `/api/audio/xml/2840`) returns a JSON-encoded string that contains XML: `<DesktopGanjoorPoemAudioList><PoemAudio>…<SyncArray><SyncInfo><VerseOrder>0</VerseOrder><AudioMiliseconds>0</AudioMiliseconds>`. `VerseOrder` is a 0-based index into the verses sorted by `vOrder`. Ghazal 1 has 14 verses and `VerseOrder` runs 0 to 13. Negative values and `<OneSecondBugFix>` are ignored.
+- **MP3 hosting.** Files live at `https://i.ganjoor.net/a/...mp3`. The server sends `accept-ranges: bytes`, so `AVPlayer` can stream and seek.
+- **Hafez categories** (poet id 2, root category 9):
 
-**Integration (lead), in order:**
-1. WP1 and WP2 merge first. Run `swift test` and the app build.
-2. WP3, then WP4. Build after each and fix call-site mismatches against the contracts.
-3. Manual RTL, Dynamic Type and dark-mode preview pass.
-4. Verify the Nastaliq line height does not clip.
+  | id | Category | Poems |
+  |---|---|---|
+  | 24 | غزلیات | 495 |
+  | 25 | قطعات | 34 |
+  | 26 | رباعیات | 42 |
+  | 27 | قصاید | 3 |
+  | 674 | اشعار منتسب | 118 |
+
+  The total is 692 poems and none of these categories has subcategories. Fal-e Hafez draws only from غزلیات (24).
+- **Other poets.** Saadi is poet id 7 with root category 118. Khayyam is poet id 3 with root category 30.
+- **Bundled pack.** All five Hafez categories ship in `pack-hafez.json` (texts, couplet summaries and recitation metadata). Audio is streamed, never bundled.
 
 ## 8. Tests and commands
 
-**Kit tests** (Swift Testing, `Packages/AzBarKit/Tests/AzBarKitTests/`):
+**Kit tests** (Swift Testing, `Packages/AzBarKit/Tests/AzBarKitTests/`, run on the macOS host):
 - **FSRSSchedulerTests:** all §4a vectors; interval ordering hard < good < easy; Again on a new card gives a 10-minute step; `R(S, t=S)` ≈ 0.9; clamping of D and maximum interval; `preview` matches `next`.
 - **ClozeEngineTests:**
   - determinism: two separate instances give equal results, and different poem ids give different orders;
@@ -1225,63 +718,12 @@ struct CoupletView: View { couplet: Couplet; layout: CoupletLayout; isHighlighte
 - AppSettings persistence with a suite-named UserDefaults.
 - Bundled `pack-hafez` loads and has 692 poems (or the count the script printed).
 
-**Commands:**
-- `swift test --package-path Packages/AzBarKit` runs on the macOS host and works now.
-- `xcodebuild -project AzBar.xcodeproj -scheme AzBar -destination 'generic/platform=iOS Simulator' build`
-- `xcodebuild -project AzBar.xcodeproj -scheme AzBar -destination 'generic/platform=iOS Simulator' build-for-testing`
-- Running the app tests needs an iOS 26+ simulator runtime (user installs it with `xcodebuild -downloadPlatform iOS`), then: `xcodebuild test -project AzBar.xcodeproj -scheme AzBar -destination 'platform=iOS Simulator,name=iPhone 17'`
+**Commands**
+- `swift test --package-path Packages/AzBarKit` runs the kit tests on the host.
+- `xcodebuild -project AzBar.xcodeproj -scheme AzBar -configuration Debug -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build-for-testing` compiles the app and its test target.
+- Running the app tests needs an iOS 26+ simulator runtime (`xcodebuild -downloadPlatform iOS`), then: `xcodebuild test -project AzBar.xcodeproj -scheme AzBar -destination 'platform=iOS Simulator,name=iPhone 17'`.
 
-**Risks and notes:**
-- **Licensing:** before App Store release, confirm licensing for the Ganjoor couplet summaries and recitations. Recitations are streamed, never bundled.
-- **Remote poets:** they are not included in v1 search.
-- **AppIcon:** a missing 1024 image only produces a build warning.
-
-### Critical files for implementation
-- AzBar.xcodeproj/project.pbxproj
-- Packages/AzBarKit/Sources/AzBarKit/Models/Poem.swift (with Couplet.swift and ContentPack.swift; the shared schema)
-- Packages/AzBarKit/Sources/AzBarKit/Memorization/FSRSScheduler.swift (and ClozeEngine.swift)
-- AzBar/Persistence/ProgressStore.swift
-- Tools/fetch_ganjoor.py
-
-All paths are relative to the project root `/Users/meysam/Library/Application Support/Claude/scratch-workspaces/dccd33d5-d441-4264-b33b-7bc0d6c5d87c/440c42ad-d189-4ce2-a822-f9a9ebe45370/scratch-2026-10-17-95d3d3/`, which is currently empty.
-## 9. Lead amendments (override anything above)
-- Project root is `AzBar/` (this folder): `AzBar/AzBar.xcodeproj`, `AzBar/AzBar/` (app sources), `AzBar/Packages/AzBarKit`, `AzBar/Tools`, `AzBar/AzBarTests`, `AzBar/Config`.
-- The user's device is an **iPhone 11 on iOS 26** (cannot run iOS 27). Deployment target stays 26.0. Use NO API introduced after iOS 26.0. No iOS 26+ simulator exists on this Mac: verify with `generic/platform=iOS Simulator` builds and `swift test` only.
-- Python's urllib fails SSL on this Mac (no CA certs). All network fetching in Python must shell out to `curl -sSfL` via subprocess. Fonts: use curl in fetch_fonts.sh.
-- Raw Ganjoor responses for Hafez are ALREADY cached in `Tools/.cache/poet-2/` as `poet-2.json`, `cat-{id}.json`, `poem-{id}.json` (692 poems, exact API query from §3c). `fetch_ganjoor.py` default cache dir = `Tools/.cache/poet-{id}`, so generating the pack needs no network.
-- Code-signing: leave DEVELOPMENT_TEAM unset; builds use `CODE_SIGNING_ALLOWED=NO`.
-
-## 10. WP0 placeholder views
-WP0 is complete: the build and `swift test` pass. These files are placeholders. The owning WP overwrites the whole file and keeps the signature. `RootView` uses exactly these call sites.
-
-| File (owner) | Declaration | Used by RootView as |
-|---|---|---|
-| `Features/Today/TodayView.swift` (WP4) | `struct TodayView: View` | `TodayView()` inside the Today `NavigationStack`, followed by `.libraryDestinations()` |
-| `Features/Library/LibraryRoute.swift` (WP3) | `enum LibraryRoute: Hashable { case poet(PoetID); case category(CategoryID, poetId: PoetID); case poem(PoemID, poetId: PoetID) }` and `extension View { func libraryDestinations() -> some View }` | applied to Today and Library roots |
-| `Features/Library/LibraryView.swift` (WP3) | `struct LibraryView: View` | `LibraryView()` inside the Library stack, followed by `.libraryDestinations()` |
-| `Features/Reader/ReaderView.swift` (WP3) | `struct ReaderView: View { init(poemId: PoemID, poetId: PoetID) }` | the `.poem` destination |
-| `Features/Fal/FalView.swift` (WP3) | `struct FalView: View` | `.sheet(isPresented: $model.isFalPresented) { FalView() }` |
-| `Features/Learn/LearnView.swift` (WP4) | `struct LearnView: View { init(request: LearnRequest) }` | `.fullScreenCover(item: $model.learnRequest)` |
-| `Features/Review/ReviewHomeView.swift` (WP4) | `struct ReviewHomeView: View` | `ReviewHomeView()` inside the Review stack |
-| `Features/Review/ReviewSessionView.swift` (WP4) | `struct ReviewSessionView: View` | `.fullScreenCover(isPresented: $model.isReviewPresented)` |
-| `Features/Settings/SettingsView.swift` (WP4) | `struct SettingsView: View` | `SettingsView()` inside the Settings stack |
-
-Every view above except `ReaderView` and `LearnView` has a parameterless `init()`. `RootView` supplies the `NavigationStack` for each tab, so tab roots must not add their own.
-
-**Stub files** (each starts with `// STUB (WPn): replace implementation, keep signatures`):
-- Kit: `ContentRepository` (WP0, real enough to read bundled packs), `FSRSScheduler`, `ClozeEngine`, `LearnSessionEngine`, `ReviewSessionEngine`, `PoemProgress` (WP2), `BundledPoemSource`, `GanjoorRemoteSource` (WP1).
-- App: `Persistence/SchemaV1.swift` (the SwiftData models are complete), `Persistence/ProgressStore.swift`, `Notifications/ReminderScheduler.swift` (WP2), `Audio/AudioPlayerService.swift` (WP3).
-
-**Additions and clarifications to the §3–§5 signatures** (no existing signature was changed):
-- `BundledPoemSource` and `GanjoorRemoteSource` exist as stubs because `ContentRepository.init` needs the types. `BundledPoemSource` already loads a pack and exposes `allPoems()`. `GanjoorRemoteSource` throws `.notFound` on every call. For a non-bundled poet, `ContentRepository.rootCategory(poetId:)` calls `remote.category(id: entry.rootCategoryId)`.
-- `SearchHit` is a top-level `public struct` in `ContentRepository.swift`. `ContentRepository.SearchHit` is a typealias for it. WP1 may move it as long as both spellings keep working.
-- `PoemProgress` has a public memberwise `init`, `static let empty`, `var fraction`, and `static func compute(cards:totalMemorizable:)`. `ProgressStore.progress` returns it.
-- `ContentError` is also `Equatable`.
-- `FSRSParameters.init(w:desiredRetention:maximumInterval:againStepMinutes:)` has defaults for every argument. `FSRSCard.init` has all fields as arguments.
-- `Theme` has `Spacing`, `Radius`, `color(for: Rating)` and `title(for: Rating)`. `title(for:)` returns the Persian rating title ("دوباره", "سخت", "خوب", "آسان").
-- `CoupletView` reads `AppSettings` as an optional environment value (`@Environment(AppSettings.self) var settings: AppSettings?`), defaulting to Naskh at 22 pt, so previews work without it. It gets the poem font and size from there. `transform` is `@escaping`.
-- `PreviewContainer { ... }` (in `PreviewFixtures.swift`) injects the full app environment. `PreviewFixtures.samplePoem` is Hafez ghazal 1.
-- `AppModel` has a designated `init(container:content:settings:)` used by `live()` and `preview()`.
-- Resources are flattened into the app bundle root, so `bundle.url(forResource: "pack-hafez", withExtension: "json")` works.
-- `pack-hafez.json` is currently a 2-poem sample (poems 2130 and 2131, categories 9 and 24). WP1 replaces it.
-- The test target does not link AzBarKit. Tests reach kit types through `@testable import AzBar`, which re-exports the kit.
+**Notes**
+- Use no API introduced after iOS 26.0; the deployment target is 26.0.
+- Remote poets are not included in search.
+- Before an App Store release, confirm the licensing of the Ganjoor couplet summaries and recitations (see `docs/appstore/content-licensing.md`).

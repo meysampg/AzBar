@@ -28,7 +28,7 @@ struct AboutView: View {
             }
 
             Section {
-                Text("متن، معنی و خوانش‌ها از گنجور (ganjoor.net)")
+                Text("متن شعرها، معنی بیت‌ها و خوانش‌ها از گنجور (ganjoor.net) گرفته شده است. حقوق معنی‌ها و خوانش‌ها از آنِ گنجور و خوانندگان آن‌هاست.")
                 if let url = URL(string: "https://ganjoor.net") {
                     Link(destination: url) {
                         Label("باز کردن گنجور", systemImage: "safari")
@@ -36,6 +36,29 @@ struct AboutView: View {
                 }
             } header: {
                 Text("منبع شعرها").font(.app(.footnote))
+            }
+
+            Section {
+                if let url = URL(string: "https://github.com/meysampg/AzBar") {
+                    Link(destination: url) {
+                        Label("کد منبع در گیت‌هاب", systemImage: "chevron.left.forwardslash.chevron.right")
+                    }
+                }
+                if let url = URL(string: "https://github.com/meysampg/AzBar/issues") {
+                    Link(destination: url) {
+                        Label("گزارش مشکل یا پیشنهاد", systemImage: "exclamationmark.bubble")
+                    }
+                }
+                if let url = URL(string: "https://github.com/meysampg/AzBar/blob/main/PRIVACY.md") {
+                    Link(destination: url) {
+                        Label("سیاست حریم خصوصی", systemImage: "hand.raised")
+                    }
+                }
+                LabeledContent("مجوز کد") {
+                    Text(verbatim: "MIT")
+                }
+            } header: {
+                Text("متن‌باز").font(.app(.footnote))
             }
 
             Section {
@@ -48,6 +71,8 @@ struct AboutView: View {
                 LabeledContent("نسخه") {
                     Text(verbatim: versionText)
                 }
+            } footer: {
+                Text(verbatim: "© 2026 Meysam Pourganji")
             }
         }
         .navigationTitle("دربارهٔ از بر")

@@ -1,7 +1,7 @@
 import Foundation
 
 /// Maps Ganjoor API DTOs to domain models. Implements exactly the algorithm of `Tools/fetch_ganjoor.py`
-/// (PLAN.md section 3b); keep both in sync.
+/// (docs/ARCHITECTURE.md section 3b); keep both in sync.
 public enum GanjoorMapper {
     /// Strips `\r`, collapses runs of spaces/tabs, trims. Keeps ZWNJ and diacritics.
     public static func clean(_ s: String?) -> String {

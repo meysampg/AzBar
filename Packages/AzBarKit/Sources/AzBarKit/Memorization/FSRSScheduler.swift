@@ -1,6 +1,6 @@
 import Foundation
 
-/// FSRS-5 scheduler (default parameters, see docs/PLAN.md §4a).
+/// FSRS-5 scheduler (default parameters, see docs/ARCHITECTURE.md §4a).
 public struct FSRSScheduler: Sendable {
     public let parameters: FSRSParameters
     public let calendar: Calendar
