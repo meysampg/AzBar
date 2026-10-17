@@ -492,7 +492,7 @@ Write this verbatim. The 24-hex IDs are arbitrary but must stay consistent.
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.meysam.azbar;
+				PRODUCT_BUNDLE_IDENTIFIER = com.github.meysampg.azbar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -517,7 +517,7 @@ Write this verbatim. The 24-hex IDs are arbitrary but must stay consistent.
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.meysam.azbar.tests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.github.meysampg.azbar.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";

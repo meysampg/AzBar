@@ -33,7 +33,7 @@ final class AppModel {
                 migrationPlan: AzBarMigrationPlan.self
             )
         } catch {
-            Logger(subsystem: "com.meysam.azbar", category: "persistence").error("On-disk ModelContainer failed: \(String(describing: error))")
+            Logger(subsystem: "com.github.meysampg.azbar", category: "persistence").error("On-disk ModelContainer failed: \(String(describing: error))")
             #if DEBUG
             assertionFailure("On-disk ModelContainer failed: \(error)")
             #endif
