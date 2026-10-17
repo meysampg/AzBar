@@ -1,4 +1,3 @@
-// STUB (WP1): replace implementation, keep signatures
 import Foundation
 
 public actor BundledPoemSource: PoemSource {
@@ -47,6 +46,16 @@ public actor BundledPoemSource: PoemSource {
         _ = try load()
         guard let p = poemsById[id] else { throw ContentError.notFound }
         return p
+    }
+
+    /// Number of poems in the pack (0 when it cannot be loaded).
+    public func poemCount() -> Int {
+        (try? load())?.poems.count ?? 0
+    }
+
+    /// Loads the pack eagerly and rethrows decoding errors (the other accessors load lazily).
+    public func contentPack() throws -> ContentPack {
+        try load()
     }
 
     /// All poems of the pack (for search and artist listing). Empty when the pack cannot be loaded.

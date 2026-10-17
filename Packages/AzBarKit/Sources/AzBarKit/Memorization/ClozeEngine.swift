@@ -1,4 +1,3 @@
-// STUB (WP2): replace implementation, keep signatures
 import Foundation
 
 public struct ClozeEngine: Sendable {
@@ -15,8 +14,23 @@ public struct ClozeEngine: Sendable {
             all.append(t)
         }
         tokens = all
-        // STUB: real implementation uses seeded weighted priorities.
-        hidingOrder = all.flatMap { $0 }.filter(\.isWord).map(\.id)
+        var rng = SplitMix64(seed: FNV1a64.hash("\(poemId):\(couplet.index)"))
+        var scored: [(id: Int, priority: Double)] = []
+        for token in all.flatMap({ $0 }) where token.isWord {
+            let len = token.normalized.count
+            let weight: Double
+            if PersianStopwords.set.contains(token.normalized) {
+                weight = 0
+            } else if len <= 2 {
+                weight = 1
+            } else {
+                weight = 2 + Double(min(len, 8)) / 8
+            }
+            let jitter = Double(rng.next() >> 11) / 9007199254740992.0 * 0.99
+            scored.append((token.id, weight + jitter))
+        }
+        scored.sort { $0.priority != $1.priority ? $0.priority > $1.priority : $0.id < $1.id }
+        hidingOrder = scored.map(\.id)
     }
 
     public func hiddenIds(fraction: Double) -> Set<Int> {
@@ -34,7 +48,7 @@ public struct ClozeEngine: Sendable {
     public static func firstLetterHint(_ t: MesraToken) -> String {
         guard let first = t.core.first else { return "" }
         let nonJoining: Set<Character> = ["ا", "آ", "أ", "إ", "د", "ذ", "ر", "ز", "ژ", "و", "ؤ"]
-        if nonJoining.contains(first) { return String(first) + "…" }
+        if let base = first.unicodeScalars.first, nonJoining.contains(Character(base)) { return String(first) + "…" }
         let remaining = t.core.count - 1
         return String(first) + String(repeating: "ـ", count: min(4, max(1, remaining)))
     }

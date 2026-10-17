@@ -1,4 +1,3 @@
-// STUB (WP0): replace implementation, keep signatures
 import Foundation
 
 public struct SearchHit: Sendable, Hashable, Identifiable {
@@ -27,6 +26,8 @@ public final class ContentRepository: Sendable {
     public let catalog: PoetCatalog
     private let bundled: [PoetID: BundledPoemSource]
     private let remote: GanjoorRemoteSource
+    private let searchIndex = SearchIndex()
+    private let categoryCache = CategoryCache()
 
     public init(catalog: PoetCatalog, bundledPacks: [PoetID: URL], remote: GanjoorRemoteSource) {
         self.catalog = catalog
@@ -72,8 +73,11 @@ public final class ContentRepository: Sendable {
     }
 
     public func category(_ id: CategoryID, poetId: PoetID) async throws -> PoemCategory {
-        if let b = bundled[poetId] { return try await b.category(id: id) }
-        return try await remote.category(id: id)
+        if let cached = await categoryCache.get(poetId: poetId, id: id) { return cached }
+        let cat: PoemCategory
+        if let b = bundled[poetId] { cat = try await b.category(id: id) } else { cat = try await remote.category(id: id) }
+        await categoryCache.set(cat, poetId: poetId)
+        return cat
     }
 
     public func poem(_ id: PoemID, poetId: PoetID) async throws -> Poem {
@@ -88,23 +92,16 @@ public final class ContentRepository: Sendable {
         return try await poem(pick.id, poetId: poetId)
     }
 
-    /// Bundled poets only in v1; query normalized; minimum 2 characters.
+    /// Bundled poets only in v1; query normalized; minimum 2 characters. The index is built once, lazily.
     public func search(_ query: String, limit: Int = 100) async -> [SearchHit] {
-        let q = PersianText.normalizeForSearch(query)
-        guard q.count >= 2 else { return [] }
-        var hits: [SearchHit] = []
-        for (poetId, source) in bundled.sorted(by: { $0.key < $1.key }) {
-            for poem in await source.allPoems() {
-                for couplet in poem.couplets {
-                    for verse in couplet.verses where PersianText.normalizeForSearch(verse.text).contains(q) {
-                        hits.append(SearchHit(id: "\(poem.id):\(couplet.index):\(verse.id)", poemId: poem.id, poetId: poetId,
-                                              poemTitle: poem.title, coupletIndex: couplet.index, matchedText: verse.text))
-                        if hits.count >= limit { return hits }
-                    }
-                }
+        if !(await searchIndex.isBuilt) {
+            var all: [Poem] = []
+            for (_, source) in bundled.sorted(by: { $0.key < $1.key }) {
+                all.append(contentsOf: await source.allPoems())
             }
+            await searchIndex.build(poems: all)
         }
-        return hits
+        return await searchIndex.search(query, limit: limit)
     }
 
     /// Distinct recitation artists sorted by frequency descending (bundled poets).
@@ -116,4 +113,13 @@ public final class ContentRepository: Sendable {
         }
         return counts.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }.map(\.key)
     }
+}
+
+/// Memoizes loaded categories (bundled categories are large; decoding dictionaries are already cached,
+/// this avoids repeated actor hops for remote ones).
+actor CategoryCache {
+    private var items: [String: PoemCategory] = [:]
+
+    func get(poetId: PoetID, id: CategoryID) -> PoemCategory? { items["\(poetId):\(id)"] }
+    func set(_ cat: PoemCategory, poetId: PoetID) { items["\(poetId):\(cat.id)"] = cat }
 }

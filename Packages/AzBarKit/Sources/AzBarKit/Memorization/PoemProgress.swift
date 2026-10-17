@@ -1,4 +1,3 @@
-// STUB (WP2): replace implementation, keep signatures
 import Foundation
 
 public struct PoemProgress: Sendable, Hashable {

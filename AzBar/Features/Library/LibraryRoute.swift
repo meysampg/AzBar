@@ -1,4 +1,3 @@
-// PLACEHOLDER (WP0): WP3 overwrites this file, keeping the enum cases and `libraryDestinations()`
 import SwiftUI
 
 enum LibraryRoute: Hashable {
@@ -12,11 +11,36 @@ extension View {
     func libraryDestinations() -> some View {
         navigationDestination(for: LibraryRoute.self) { route in
             switch route {
+            case .poet(let poetId):
+                PoetView(poetId: poetId)
+            case .category(let categoryId, let poetId):
+                CategoryView(categoryId: categoryId, poetId: poetId)
             case .poem(let poemId, let poetId):
                 ReaderView(poemId: poemId, poetId: poetId)
-            case .poet, .category:
-                ContentUnavailableView("کتابخانه", systemImage: "books.vertical")
             }
+        }
+    }
+}
+
+/// Loading phase shared by the Library screens.
+enum LibraryLoadPhase<Value> {
+    case loading
+    case loaded(Value)
+    case failed
+}
+
+/// Standard error state for remote content with a retry button.
+struct LibraryErrorView: View {
+    let retry: () -> Void
+
+    var body: some View {
+        ContentUnavailableView {
+            Label("اتصال برقرار نشد", systemImage: "wifi.slash")
+        } description: {
+            Text("اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.")
+        } actions: {
+            Button("تلاش دوباره", action: retry)
+                .buttonStyle(.glass)
         }
     }
 }

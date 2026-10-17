@@ -1,0 +1,225 @@
+#!/usr/bin/env python3
+"""Build an AzBar content pack from the Ganjoor API (stdlib only; network via curl).
+
+Usage:
+  python3 -I Tools/fetch_ganjoor.py --poet-id 2 --slug hafez \
+      [--out AzBar/Resources/Content/pack-hafez.json] [--cache Tools/.cache/poet-2] \
+      [--delay 0.5] [--only-cats 24,25]
+
+Every raw response is cached as {cache}/{poet|cat|poem}-{id}.json, so re-runs resume and
+a fully cached poet needs no network. The couplet-building algorithm (PLAN.md section 3b)
+must stay identical to AzBarKit's GanjoorMapper.
+"""
+import argparse
+import datetime
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+
+API = "https://api.ganjoor.net/api/ganjoor"
+POEM_QUERY = ("verseDetails=true&recitations=true&catInfo=false&rhymes=false&next=false&prev=false"
+              "&images=false&songs=false&comments=false&navigation=false&relatedpoems=false")
+USER_AGENT = "AzBar-ContentTool/1.0"
+SIZE_LIMIT = 15 * 1024 * 1024
+SPACES = re.compile(r"[ \t]+")
+
+
+# ---------- fetching ----------
+
+def curl_json(url, delay):
+    last = None
+    for attempt in range(5):
+        try:
+            out = subprocess.run(
+                ["curl", "-sSfL", "-m", "30", "-A", USER_AGENT, url],
+                check=True, capture_output=True).stdout
+            data = json.loads(out.decode("utf-8"))
+            time.sleep(delay)
+            return data
+        except (subprocess.CalledProcessError, ValueError) as e:
+            last = e
+            time.sleep(2 ** attempt)
+    raise SystemExit(f"failed after retries: {url}: {last}")
+
+
+def cached(kind, ident, url, cache, delay):
+    path = os.path.join(cache, f"{kind}-{ident}.json")
+    if os.path.exists(path):
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    data = curl_json(url, delay)
+    os.makedirs(cache, exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False)
+    return data
+
+
+# ---------- mapping (section 3b) ----------
+
+def clean(text):
+    if text is None:
+        return ""
+    return SPACES.sub(" ", text.replace("\r", "")).strip()
+
+
+def build_couplets(verses):
+    ordered = sorted(verses, key=lambda v: v["vOrder"])
+    groups = {}
+    order = []  # keys in first-seen order
+    for v in ordered:
+        ci = v.get("coupletIndex")
+        key = ci if ci is not None else -v["vOrder"]
+        if key not in groups:
+            groups[key] = {"null": ci is None, "verses": []}
+            order.append(key)
+        groups[key]["verses"].append(v)
+    couplets = []
+    for key in order:
+        g = groups[key]
+        vs = g["verses"]
+        first_pos = vs[0].get("versePosition")
+        if g["null"]:
+            kind = "paragraph"
+        elif len(vs) >= 2 and first_pos in (0, 2):
+            kind = "beyt"
+        elif len(vs) == 1 and first_pos in (4, 0):
+            kind = "single"
+        else:
+            kind = "paragraph"
+        summary = ""
+        for v in vs:
+            s = clean(v.get("coupletSummary"))
+            if s:
+                summary = s
+                break
+        c = {"index": key, "kind": kind,
+             "verses": [{"id": v["id"], "order": v["vOrder"], "position": v.get("versePosition") or 0,
+                         "text": clean(v.get("text"))} for v in vs]}
+        if summary:
+            c["summary"] = summary
+        couplets.append(c)
+    return couplets
+
+
+def build_recitations(raw):
+    out = []
+    items = [r for r in (raw or []) if (r.get("mp3Url") or "").strip()]
+    items.sort(key=lambda r: r.get("audioOrder") or 0)  # stable
+    for r in items:
+        rec = {"id": r["id"], "artist": clean(r.get("audioArtist")), "mp3Url": r["mp3Url"].strip(),
+               "order": r.get("audioOrder") or 0, "type": r.get("recitationType") or 0,
+               "synced": bool(r.get("inSyncWithText"))}
+        if (r.get("xmlText") or "").strip():
+            rec["syncUrl"] = r["xmlText"].strip()
+        out.append(rec)
+    return out
+
+
+def build_poem(raw, poet_id, category_id):
+    p = {"id": raw["id"], "poetId": poet_id, "categoryId": category_id,
+         "title": clean(raw.get("title")), "fullTitle": clean(raw.get("fullTitle")),
+         "urlSlug": raw.get("urlSlug") or "", "fullUrl": raw.get("fullUrl") or ""}
+    summary = clean(raw.get("poemSummary"))
+    if summary:
+        p["summary"] = summary
+    p["couplets"] = build_couplets(raw.get("verses") or [])
+    recs = build_recitations(raw.get("recitations"))
+    if recs:
+        p["recitations"] = recs
+    return p
+
+
+def memorizable_count(poem):
+    return sum(1 for c in poem["couplets"] if c["kind"] != "paragraph" and c["index"] >= 0)
+
+
+# ---------- main ----------
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--poet-id", type=int, required=True)
+    ap.add_argument("--slug", required=True)
+    ap.add_argument("--out")
+    ap.add_argument("--cache")
+    ap.add_argument("--delay", type=float, default=0.5)
+    ap.add_argument("--only-cats", default="")
+    a = ap.parse_args()
+
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    out_path = a.out or os.path.join(root, "AzBar", "Resources", "Content", f"pack-{a.slug}.json")
+    cache = a.cache or os.path.join(root, "Tools", ".cache", f"poet-{a.poet_id}")
+    only = {int(x) for x in a.only_cats.split(",") if x.strip()}
+
+    poet_raw = cached("poet", a.poet_id, f"{API}/poet/{a.poet_id}", cache, a.delay)
+    pr, root_cat = poet_raw["poet"], poet_raw["cat"]
+    root_id = pr["rootCatId"]
+    poet = {"id": pr["id"], "name": clean(pr.get("nickname")) or clean(pr["name"]),
+            "fullName": clean(pr["name"]), "slug": a.slug, "rootCategoryId": root_id}
+    if clean(pr.get("description")):
+        poet["description"] = clean(pr["description"])
+    if pr.get("birthYearInLHijri"):
+        poet["birthYearHijri"] = pr["birthYearInLHijri"]
+    if pr.get("deathYearInLHijri"):
+        poet["deathYearHijri"] = pr["deathYearInLHijri"]
+
+    children = [c for c in (root_cat.get("children") or []) if not only or c["id"] in only]
+    categories = [{"id": root_id, "poetId": a.poet_id, "title": clean(root_cat["title"]),
+                   "slug": root_cat.get("urlSlug") or a.slug,
+                   "children": [{"id": c["id"], "title": clean(c["title"])} for c in children],
+                   "poems": []}]
+    poems = []
+    queue = [(c["id"], root_id) for c in children]
+    seen = set()
+    while queue:
+        cid, parent = queue.pop(0)
+        if cid in seen:
+            continue
+        seen.add(cid)
+        cat = cached("cat", cid, f"{API}/cat/{cid}?poems=true", cache, a.delay)["cat"]
+        subs = cat.get("children") or []
+        summaries = []
+        for ps in cat.get("poems") or []:
+            raw = cached("poem", ps["id"], f"{API}/poem/{ps['id']}?{POEM_QUERY}", cache, a.delay)
+            poem = build_poem(raw, a.poet_id, cid)
+            poems.append(poem)
+            s = {"id": poem["id"], "categoryId": cid, "title": poem["title"],
+                 "urlSlug": poem["urlSlug"], "coupletCount": memorizable_count(poem)}
+            ex = clean(ps.get("excerpt"))
+            if ex:
+                s["excerpt"] = ex
+            summaries.append(s)
+        categories.append({"id": cid, "poetId": a.poet_id, "title": clean(cat["title"]),
+                           "slug": cat.get("urlSlug") or "", "parentId": parent,
+                           "children": [{"id": c["id"], "title": clean(c["title"])} for c in subs],
+                           "poems": summaries})
+        queue.extend((c["id"], cid) for c in subs)
+
+    pack = {"schemaVersion": 1,
+            "generatedAt": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "source": "api.ganjoor.net", "poet": poet, "categories": categories, "poems": poems}
+
+    def dump():
+        return json.dumps(pack, ensure_ascii=False, separators=(",", ":"))
+
+    text = dump()
+    if len(text.encode("utf-8")) > SIZE_LIMIT:
+        for p in poems:
+            if "recitations" in p:
+                p["recitations"] = p["recitations"][:8]
+        text = dump()
+        print("size guard applied: recitations limited to 8 per poem", file=sys.stderr)
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(text)
+    size = os.path.getsize(out_path)
+    couplets = sum(len(p["couplets"]) for p in poems)
+    memo = sum(memorizable_count(p) for p in poems)
+    print(f"poems: {len(poems)}\ncouplets: {couplets} (memorizable {memo})\n"
+          f"size: {size / 1048576:.2f} MB -> {out_path}")
+
+
+if __name__ == "__main__":
+    main()
