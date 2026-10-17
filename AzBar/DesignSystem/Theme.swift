@@ -35,3 +35,14 @@ enum Theme {
         }
     }
 }
+
+extension Theme {
+    /// Colours of the Duolingo-style components.
+    enum Playful {
+        static let correct = Color.green
+        static let wrong = Color.red
+        static let xp = Color.orange
+        static let gold = Color(red: 1, green: 0.76, blue: 0.03)
+        static let locked = Color(.systemGray4)
+    }
+}

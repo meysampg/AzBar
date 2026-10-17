@@ -4,6 +4,7 @@ enum LibraryRoute: Hashable {
     case poet(PoetID)
     case category(CategoryID, poetId: PoetID)
     case poem(PoemID, poetId: PoetID)
+    case path(PoemID, poetId: PoetID)
 }
 
 extension View {
@@ -17,6 +18,8 @@ extension View {
                 CategoryView(categoryId: categoryId, poetId: poetId)
             case .poem(let poemId, let poetId):
                 ReaderView(poemId: poemId, poetId: poetId)
+            case .path(let poemId, let poetId):
+                PoemPathView(poemId: poemId, poetId: poetId)
             }
         }
     }

@@ -46,10 +46,9 @@ struct PreviewContainer<Content: View>: View {
             .environment(model.settings)
             .environment(model.progress)
             .environment(model.audio)
+            .environment(model.gamification)
             .environment(\.contentRepository, model.content)
-            .environment(\.layoutDirection, .rightToLeft)
-            .environment(\.locale, Locale(identifier: "fa_IR"))
-            .environment(\.calendar, Calendar(identifier: .persian))
+            .persianRoot()
             .font(.app(.body))
             .modelContainer(model.container)
     }

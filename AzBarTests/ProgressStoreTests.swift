@@ -9,7 +9,7 @@ struct ProgressStoreTests {
     let scheduler = FSRSScheduler()
 
     func makeStore() throws -> ProgressStore {
-        let schema = Schema(versionedSchema: AzBarSchemaV1.self)
+        let schema = Schema(versionedSchema: AzBarSchemaV2.self)
         let container = try ModelContainer(for: schema, migrationPlan: AzBarMigrationPlan.self,
                                            configurations: ModelConfiguration(isStoredInMemoryOnly: true))
         return ProgressStore(container: container)

@@ -6,6 +6,8 @@ struct RatingBar: View {
     /// Preview of the scheduling outcome per rating; nil hides the intervals.
     var previews: [Rating: SchedulingResult]?
     var now: Date = .now
+    // STUB (P-A): highlight the suggested button (.glassProminent + caption «پیشنهاد», label suffix «، پیشنهادی»).
+    var suggested: Rating? = nil
     var onRate: (Rating) -> Void
 
     @Environment(\.dynamicTypeSize) private var typeSize

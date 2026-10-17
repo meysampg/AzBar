@@ -247,4 +247,45 @@ final class ProgressStore {
         }
         return streak
     }
+
+    // MARK: Gamification queries
+    // STUB (P-B): implement, keep signatures. P0 returns defaults so everything compiles.
+    // Package B also makes `currentStreak` freeze-aware (StreakCalculator) and makes `dayKey` use `DayKey(...).string`.
+
+    /// Cards that have left the `.new` state.
+    func learnedCoupletCount() -> Int {
+        _ = revision
+        return 0
+    }
+
+    /// Cards in `.review` with `stability >= threshold`.
+    func matureCoupletCount(threshold: Double = 21) -> Int {
+        _ = revision
+        _ = threshold
+        return 0
+    }
+
+    /// Review log entries that are not learning entries.
+    func reviewCount() -> Int {
+        _ = revision
+        return 0
+    }
+
+    /// Plans whose memorizable couplets all have a card.
+    func completedPoemCount() -> Int {
+        _ = revision
+        return 0
+    }
+
+    /// Days with `DailyActivity` (review + learned > 0) or `DailyXP` (xp > 0).
+    func activeDays() -> Set<DayKey> {
+        _ = revision
+        return []
+    }
+
+    /// Days covered by a streak freeze.
+    func frozenDays() -> Set<DayKey> {
+        _ = revision
+        return []
+    }
 }

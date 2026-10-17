@@ -8,11 +8,6 @@ enum AzBarSchemaV1: VersionedSchema {
     }
 }
 
-enum AzBarMigrationPlan: SchemaMigrationPlan {
-    static var schemas: [any VersionedSchema.Type] { [AzBarSchemaV1.self] }
-    static var stages: [MigrationStage] { [] }
-}
-
 extension AzBarSchemaV1 {
     @Model final class CoupletCard {
         #Index<CoupletCard>([\.due], [\.poemId])
@@ -121,9 +116,3 @@ extension AzBarSchemaV1 {
         }
     }
 }
-
-typealias CoupletCard = AzBarSchemaV1.CoupletCard
-typealias MemorizationPlan = AzBarSchemaV1.MemorizationPlan
-typealias ReviewLogEntry = AzBarSchemaV1.ReviewLogEntry
-typealias FavoritePoem = AzBarSchemaV1.FavoritePoem
-typealias DailyActivity = AzBarSchemaV1.DailyActivity

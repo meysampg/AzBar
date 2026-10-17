@@ -122,6 +122,8 @@ final class LearnModel {
         case .firstLetters: "با حرف نخست هر واژه"
         case .recallSecond: "مصراع دوم را به یاد آور"
         case .recallChain: "بیت بعد چیست؟"
+        // STUB (P-C): headings for the interactive steps.
+        case .fillBlank, .wordBank: ""
         case nil: ""
         }
     }

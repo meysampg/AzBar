@@ -172,6 +172,9 @@ struct LearnStepBody: View {
             recallSecondContent(couplet)
         case .recallChain:
             recallChainContent(couplet)
+        case .fillBlank, .wordBank:
+            // STUB (P-C): FillBlankView / WordBankView.
+            EmptyView()
         case nil:
             EmptyView()
         }
