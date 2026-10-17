@@ -4,33 +4,16 @@
 
 [![CI](https://github.com/meysampg/AzBar/actions/workflows/ci.yml/badge.svg)](https://github.com/meysampg/AzBar/actions/workflows/ci.yml)
 
-<p align="center">
-<img src="docs/screenshots/01-today.png" width="200" alt="Today"> 
-<img src="docs/screenshots/02-path.png" width="200" alt="Path"> 
-<img src="docs/screenshots/03-learn-wordbank.png" width="200" alt="Word bank"> 
-<img src="docs/screenshots/04-learn-fillblank.png" width="200" alt="Fill blank"> 
-<img src="docs/screenshots/06-lesson-complete.png" width="200" alt="Lesson complete">
-</p>
-<p align="center">
-<img src="docs/screenshots/07-reader.png" width="200" alt="Reader"> 
-<img src="docs/screenshots/08-library.png" width="200" alt="Library"> 
-<img src="docs/screenshots/12-progress.png" width="200" alt="Progress"> 
-<img src="docs/screenshots/15-fal-result.png" width="200" alt="Fal"> 
-<img src="docs/screenshots/16-settings.png" width="200" alt="Settings">
-</p>
-<p align="center"><sub>
-امروز · Today &nbsp;|&nbsp; مسیر حفظ · Path &nbsp;|&nbsp; چیدن واژه‌ها · Word bank &nbsp;|&nbsp; جای خالی · Fill blank &nbsp;|&nbsp; پایان درس · Lesson complete<br>
-خواندن · Reader &nbsp;|&nbsp; کتابخانه · Library &nbsp;|&nbsp; پیشرفت · Progress &nbsp;|&nbsp; فال حافظ · Fal &nbsp;|&nbsp; تنظیمات · Settings<br>
-<a href="docs/screenshots/">All screenshots</a>
-</sub></p>
+<p align="center"><img src="docs/poster.png" width="100%" alt="AzBar poster: 17 app screens (learning path, today, word-bank, fill-in-the-blank and cloze exercises, lesson complete, reader, library, poets, categories, review, progress, badges, Fal-e Hafez, settings, about) arranged around a gold mihrab arch on Persian tile patterns, under the title ازبر and a Hafez couplet."></p>
+<p align="center"><sub><a href="docs/screenshots/">All screenshots, individually</a></sub></p>
 
-ازبر برنامه‌ای برای حفظ کردن شعر فارسی است، با دیوان حافظ. بیت‌به‌بیت می‌خوانید، می‌شنوید، جای خالی‌ها را پر می‌کنید و با مرورِ فاصله‌دار شعر را برای همیشه از بر می‌کنید.
+ازبر برنامه‌ای برای حفظ کردن شعر فارسی است، با حافظ، سعدی، خیام و صائب. بیت‌به‌بیت می‌خوانید، می‌شنوید، جای خالی‌ها را پر می‌کنید و با مرورِ فاصله‌دار شعر را برای همیشه از بر می‌کنید.
 
-AzBar («az bar», from memory) is a free, open-source iOS app for memorizing Persian poetry, starting with the Divan of Hafez. You read each couplet, listen to a recitation, fill in progressively more blanks, and then review it on a spaced-repetition schedule. The whole interface is Persian and right-to-left.
+AzBar («az bar», from memory) is a free, open-source iOS app for memorizing Persian poetry, starting with Hafez, Saadi, Khayyam and Saeb. You read each couplet, listen to a recitation, fill in progressively more blanks, and then review it on a spaced-repetition schedule. The whole interface is Persian and right-to-left.
 
 ## Features
 
-- The full Divan of Hafez, 692 poems, bundled for offline use; Saadi and Khayyam load online from Ganjoor
+- Four poets bundled for offline use: Hafez (the complete Divan, 692 poems), Saadi (ghazals, Bustan and Golestan: 637 ghazals, 1,158 poems in all), Khayyam (178 rubaiyat) and Saeb (1,542 selected single beyts). The rest of each poet's works loads online from Ganjoor
 - Couplet meanings, shown or hidden as you like
 - Recitations synced to the text, with lock-screen playback
 - A guided Learn flow: read, listen, cloze levels, first letters, recall
