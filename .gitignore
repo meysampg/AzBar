@@ -1,0 +1,6 @@
+Tools/.cache/
+build/
+DerivedData/
+xcuserdata/
+.build/
+.swiftpm/
