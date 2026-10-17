@@ -150,12 +150,23 @@ struct PathMapView: View {
         let roomRight = CGFloat(geo.size.width) - p.x - d / 2 - gap - 8
         let preferRight = travel < 0 || (travel == 0 && roomRight >= roomLeft)
         // Beside at normal sizes; below only at accessibility sizes.
+        let longest: Int = {
+            switch node.kind {
+            case .lesson: node.lessonNumber.map { _ in 14 } ?? 8
+            case .review: 12
+            case .challenge: 12
+            }
+        }()
+        let need = CGFloat(longest) * line * 0.45 + 16
+        var wrap = false
         let side: Int = {   // -1 left, 1 right, 0 below
             if dynamicTypeSize.isAccessibilitySize { return 0 }
             let pref = preferRight ? roomRight : roomLeft
             let other = preferRight ? roomLeft : roomRight
-            if pref < 56 && other > pref { return preferRight ? -1 : 1 }
-            return preferRight ? 1 : -1
+            if pref >= need { return preferRight ? 1 : -1 }
+            if other >= need { return preferRight ? -1 : 1 }
+            wrap = true
+            return (pref >= other) == preferRight ? 1 : -1
         }()
         let labelWidth = CGFloat(min(Double(width) - 32, Double(9 * line)))
         let backing = Capsule().fill(Theme.Palette.paper.opacity(0.9))
@@ -171,18 +182,18 @@ struct PathMapView: View {
             let room = max(side > 0 ? roomRight : roomLeft, 40)
             // Outer frame is LTR and anchors the content at the node edge; the label itself is RTL.
             // Node sits at the visual left of a right-side label (RTL .trailing) and vice versa.
-            label(node, alignment: side > 0 ? .trailing : .leading)
+            label(node, alignment: side > 0 ? .trailing : .leading, wrap: wrap)
                 .padding(.horizontal, 8)
                 .background(backing)
                 .environment(\.layoutDirection, .rightToLeft)
-                .frame(width: room, height: labelBlock, alignment: side > 0 ? .leading : .trailing)
+                .frame(width: room, alignment: side > 0 ? .leading : .trailing)
                 .position(x: side > 0 ? p.x + d / 2 + gap + room / 2 : p.x - d / 2 - gap - room / 2, y: p.y)
                 .accessibilityHidden(true)
         }
     }
 
     @ViewBuilder
-    private func label(_ node: PathNode, alignment: HorizontalAlignment = .center) -> some View {
+    private func label(_ node: PathNode, alignment: HorizontalAlignment = .center, wrap: Bool = false) -> some View {
         let locked = node.state == .locked
         VStack(alignment: alignment, spacing: 0) {
             switch node.kind {
@@ -205,7 +216,7 @@ struct PathMapView: View {
                     .foregroundStyle(locked ? Theme.Palette.inkTertiary : Theme.Palette.ink)
             }
         }
-        .lineLimit(1)
+        .lineLimit(wrap ? 2 : 1)
         .minimumScaleFactor(0.8)
         .multilineTextAlignment(alignment == .center ? .center : (alignment == .leading ? .leading : .trailing))
     }
