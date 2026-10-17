@@ -79,7 +79,7 @@ struct PathSnapshotTests {
             .dynamicTypeSize(type)
             .persianRoot()
         let renderer = ImageRenderer(content: view)
-        renderer.scale = 3
+        renderer.scale = scenario.lessons > 6 ? 1.5 : 3
         let image = try #require(renderer.uiImage)
         let png = try #require(image.pngData())
         let typeName = type == .large ? "large" : "ax3"

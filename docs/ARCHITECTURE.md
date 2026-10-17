@@ -134,11 +134,14 @@ public struct ContentPack { schemaVersion: Int; generatedAt: String; source: Str
 ```json
 {"schemaVersion":1,"poets":[
  {"id":2,"slug":"hafez","name":"حافظ","fullName":"حافظ شیرازی","rootCategoryId":9,"bundledPack":"pack-hafez","falCategoryId":24,"birthYearHijri":726,"deathYearHijri":792,"sortOrder":0,"isEnabled":true},
- {"id":7,"slug":"saadi","name":"سعدی","fullName":"سعدی شیرازی","rootCategoryId":118,"bundledPack":null,"falCategoryId":null,"birthYearHijri":615,"deathYearHijri":694,"sortOrder":1,"isEnabled":true},
- {"id":3,"slug":"khayyam","name":"خیام","fullName":"خیام نیشابوری","rootCategoryId":30,"bundledPack":null,"falCategoryId":null,"birthYearHijri":439,"deathYearHijri":526,"sortOrder":2,"isEnabled":true}]}
+ {"id":7,"slug":"saadi","name":"سعدی","fullName":"سعدی شیرازی","rootCategoryId":118,"bundledPack":"pack-saadi","bundledCategoryIds":[120,123,1665],"falCategoryId":null,"birthYearHijri":615,"deathYearHijri":694,"sortOrder":1,"isEnabled":true},
+ {"id":3,"slug":"khayyam","name":"خیام","fullName":"خیام نیشابوری","rootCategoryId":30,"bundledPack":"pack-khayyam","bundledCategoryIds":[31],"falCategoryId":null,"birthYearHijri":439,"deathYearHijri":526,"sortOrder":2,"isEnabled":true},
+ {"id":22,"slug":"saeb","name":"صائب","fullName":"صائب تبریزی","rootCategoryId":279,"bundledPack":"pack-saeb","bundledCategoryIds":[282],"falCategoryId":null,"birthYearHijri":1001,"deathYearHijri":1080,"sortOrder":3,"isEnabled":true}]}
 ```
 
-Adding a poet means adding an entry. To ship it offline as well, run the script with `--poet-id N --slug x` and set `bundledPack`.
+Adding a poet means adding an entry. To ship it offline as well, run the script with `--poet-id N --slug x` (plus `--only-cats` for a partial pack) and set `bundledPack` and, for a partial pack, `bundledCategoryIds`. A nil or empty `bundledCategoryIds` with a `bundledPack` means the whole poet is bundled (`isFullyBundled`); otherwise the poet is `isPartiallyBundled` and everything outside those categories is served by the remote source. A missing pack file simply routes the poet to remote.
+
+In a partial pack, the root category and every intermediate category on the way to a bundled category are present and navigable. Their children that are not bundled carry `"onlineOnly":true` (`CategoryRef.isOnlineOnly`, encoded only when true), and the UI fetches those from the remote source on demand.
 
 `pack-hafez.json`:
 - Minified, UTF-8, `ensure_ascii=False`. Null or empty optional keys are omitted.
@@ -170,9 +173,14 @@ Adding a poet means adding an entry. To ship it offline as well, run the script 
 
 ### 3c. Tools/fetch_ganjoor.py (stdlib only)
 
-- **CLI:** `python3 -I Tools/fetch_ganjoor.py --poet-id 2 --slug hafez [--out AzBar/Resources/Content/pack-hafez.json] [--cache Tools/.cache/poet-2] [--delay 0.5] [--only-cats 24,25] [--no-summaries]`.
+- **CLI:** `python3 -I Tools/fetch_ganjoor.py --poet-id 2 --slug hafez [--out AzBar/Resources/Content/pack-hafez.json] [--cache Tools/.cache/poet-2] [--delay 0.5] [--only-cats 24,25] [--no-summaries]`. `--only-cats` accepts category ids at any depth.
 - **Fetching:** shells out to `curl -sSfL` (`User-Agent: AzBar-ContentTool/1.0`, 30 s timeout) so it uses the system trust store; Python builds without CA certificates cannot verify TLS through `urllib`. Five attempts with exponential backoff; `--delay` seconds of sleep after every network call (cache hits skip it).
 - **Resumable:** every raw response is written to `{cache}/{poet|cat|poem}-{id}.json` and reused on re-runs. A fully cached poet needs no network. `Tools/cache_ganjoor_raw.py <poet-id> <cache-dir>` pre-populates the same cache.
+- **Nested selection (`--only-cats`):** for each requested id the script loads `cat-{id}` (fetching only if missing) and reads `cat.ancestors`. `keep = requested ∪ (ancestors − root)`. The root entry lists all root children, adding `onlineOnly:true` to those not in `keep`. Each ancestor is written as a shell category (children annotated the same way, poem summaries without `coupletCount`, no poem bodies) with `parentId` set to its real parent. Each requested category is walked in full, breadth-first. Non-selected categories are never fetched (Saeb's `1852` alone has about 7,000 ghazals). Without `--only-cats` the output is identical to the previous behaviour apart from `generatedAt`. After writing, the script prints a catalog hint line with `bundledCategoryIds`, `birthYearHijri` and `deathYearHijri`.
+- **Commands:**
+  - `python3 -I Tools/fetch_ganjoor.py --poet-id 3 --slug khayyam --only-cats 31`
+  - `python3 -I Tools/fetch_ganjoor.py --poet-id 22 --slug saeb --only-cats 282`
+  - `python3 -I Tools/fetch_ganjoor.py --poet-id 7 --slug saadi --only-cats 120,123,1665`
 - **Steps:**
   1. `GET /api/ganjoor/poet/{id}` gives the poet and its root category.
   2. Breadth-first over categories: `GET /api/ganjoor/cat/{id}?poems=true`, then recurse into `cat.children`.
@@ -687,8 +695,14 @@ Base URL `https://api.ganjoor.net`; recitation audio is hosted on `https://i.gan
   | 674 | اشعار منتسب | 118 |
 
   The total is 692 poems and none of these categories has subcategories. Fal-e Hafez draws only from غزلیات (24).
-- **Other poets.** Saadi is poet id 7 with root category 118. Khayyam is poet id 3 with root category 30.
-- **Bundled pack.** All five Hafez categories ship in `pack-hafez.json` (texts, couplet summaries and recitation metadata). Audio is streamed, never bundled.
+- **Other poets.**
+
+  | Poet | id | Root | Bundled categories | Notes |
+  |---|---|---|---|---|
+  | Saadi | 7 | 118 | 120 (ghazals, 637), 123 (11 children), 1665 (8 children) | Parent `119` is shallow; Bustan and Golestan contain prose paragraphs |
+  | Khayyam | 3 | 30 | 31 (rubaiyat, 178; 2 memorizable couplets each) | Other root children are `onlineOnly` |
+  | Saeb | 22 | 279 | 282 (1,542 single beyts) | Parent `280` is shallow; its other children (for example `1852`, 6,995 ghazals) are `onlineOnly` |
+- **Bundled packs.** All five Hafez categories ship in `pack-hafez.json`; Khayyam, Saeb and Saadi ship the selected categories above in `pack-{khayyam,saeb,saadi}.json` (texts, couplet summaries and recitation metadata). Audio is streamed, never bundled.
 
 ## 8. Tests and commands
 

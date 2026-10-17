@@ -72,8 +72,6 @@ struct PathMapView: View {
         let segments = geo.segments
         let reached = PathGeometry.reachedSegmentCount(nodes.map(\.state))
         let remainingEnd = max(segments.count, reached)
-        let labelWidth = CGFloat(min(Double(width) - 32, Double(9 * line)))
-
         return ZStack(alignment: .topLeading) {
             // The continuous curve: road, remaining (dashed sand), completed (teal).
             Group {
@@ -104,11 +102,7 @@ struct PathMapView: View {
                     .position(p)
                     .accessibilitySortPriority(Double(nodes.count - i))
 
-                label(node)
-                    .frame(width: labelWidth, height: labelBlock, alignment: .top)
-                    .environment(\.layoutDirection, .rightToLeft)
-                    .position(x: p.x, y: p.y + d / 2 + 6 + labelBlock / 2)
-                    .accessibilityHidden(true)
+                labelView(node, index: i, geo: geo, d: d)
 
                 if node.state == .current {
                     startBubble(isPartial: node.id == partialNodeId)
@@ -125,11 +119,16 @@ struct PathMapView: View {
 
     // MARK: Labels
 
+    /// «بیت ۱ تا ۲» / «بیت ۵» (no en dash: it breaks bidi next to digits).
+    static func rangeText(_ r: ClosedRange<Int>) -> String {
+        r.lowerBound == r.upperBound ? "بیت \(r.lowerBound.fa)" : "بیت \(r.lowerBound.fa) تا \(r.upperBound.fa)"
+    }
+
     private func caption(_ node: PathNode) -> String {
         switch node.kind {
         case .lesson:
             if let n = node.lessonNumber, let r = beytRanges[node.id] {
-                "درس \(n.fa) · بیت \(r.lowerBound.fa)–\(r.upperBound.fa)"
+                "درس \(n.fa) · \(Self.rangeText(r))"
             } else {
                 "درس \(node.lessonNumber?.fa ?? "")"
             }
@@ -138,17 +137,59 @@ struct PathMapView: View {
         }
     }
 
+    /// Places the label beside the node, on the side away from the curve's horizontal travel;
+    /// falls back to below the node (on a paper backing) when neither side has room.
     @ViewBuilder
-    private func label(_ node: PathNode) -> some View {
+    private func labelView(_ node: PathNode, index i: Int, geo: PathGeometry, d: CGFloat) -> some View {
+        let p = geo.points[i]
+        let ref = i + 1 < geo.points.count ? geo.points[i + 1].x : (i > 0 ? geo.points[i - 1].x : p.x)
+        let travel = (i + 1 < geo.points.count ? 1 : -1) * (ref - p.x)   // >0: curve leaves toward +x
+        let gap: CGFloat = 12
+        let roomLeft = p.x - d / 2 - gap - 8
+        let roomRight = CGFloat(geo.size.width) - p.x - d / 2 - gap - 8
+        let minRoom: CGFloat = 5 * line
+        let preferRight = travel < 0 || (travel == 0 && roomRight >= roomLeft)
+        let side: Int = {   // -1 left, 1 right, 0 below
+            let pref = preferRight ? roomRight : roomLeft
+            let other = preferRight ? roomLeft : roomRight
+            if pref >= minRoom { return preferRight ? 1 : -1 }
+            if travel == 0 && other >= minRoom { return preferRight ? -1 : 1 }
+            return 0
+        }()
+        let labelWidth = CGFloat(min(Double(width) - 32, Double(9 * line)))
+        let backing = Capsule().fill(Theme.Palette.paper.opacity(0.9))
+        if side == 0 {
+            label(node)
+                .padding(.horizontal, 8)
+                .background(backing)
+                .frame(width: labelWidth, height: labelBlock, alignment: .top)
+                .environment(\.layoutDirection, .rightToLeft)
+                .position(x: p.x, y: p.y + d / 2 + 6 + labelBlock / 2)
+                .accessibilityHidden(true)
+        } else {
+            let room = side > 0 ? roomRight : roomLeft
+            let w = min(room, labelWidth)
+            label(node, alignment: .leading)
+                .padding(.horizontal, 8)
+                .background(backing)
+                .frame(width: w, height: labelBlock, alignment: .leading)
+                .environment(\.layoutDirection, .rightToLeft)
+                .position(x: side > 0 ? p.x + d / 2 + gap + w / 2 : p.x - d / 2 - gap - w / 2, y: p.y)
+                .accessibilityHidden(true)
+        }
+    }
+
+    @ViewBuilder
+    private func label(_ node: PathNode, alignment: HorizontalAlignment = .center) -> some View {
         let locked = node.state == .locked
-        VStack(spacing: 0) {
+        VStack(alignment: alignment, spacing: 0) {
             switch node.kind {
             case .lesson:
                 Text("درس \(node.lessonNumber?.fa ?? "")")
                     .font(.app(.footnote, weight: .semibold))
                     .foregroundStyle(locked ? Theme.Palette.inkTertiary : Theme.Palette.ink)
                 if let r = beytRanges[node.id] {
-                    Text("بیت \(r.lowerBound.fa)–\(r.upperBound.fa)")
+                    Text(Self.rangeText(r))
                         .font(.azCaption)
                         .foregroundStyle(locked ? Theme.Palette.inkTertiary : Theme.Palette.inkSecondary)
                 }
@@ -164,7 +205,7 @@ struct PathMapView: View {
         }
         .lineLimit(1)
         .minimumScaleFactor(0.8)
-        .multilineTextAlignment(.center)
+        .multilineTextAlignment(alignment == .center ? .center : .leading)
     }
 
     private func startBubble(isPartial: Bool) -> some View {

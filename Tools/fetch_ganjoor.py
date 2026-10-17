@@ -6,6 +6,9 @@ Usage:
       [--out AzBar/Resources/Content/pack-hafez.json] [--cache Tools/.cache/poet-2] \
       [--delay 0.5] [--only-cats 24,25] [--no-summaries]
 
+--only-cats takes category ids at any depth: ancestors stay navigable, other siblings become
+onlineOnly refs, and only missing selected files are fetched (never non-selected categories).
+
 Every raw response is cached as {cache}/{poet|cat|poem}-{id}.json, so re-runs resume and
 a fully cached poet needs no network. --no-summaries omits all Ganjoor poem/couplet summaries
 (meanings) from the pack. The couplet-building algorithm (docs/ARCHITECTURE.md)
@@ -173,13 +176,60 @@ def main():
     if pr.get("deathYearInLHijri"):
         poet["deathYearHijri"] = pr["deathYearInLHijri"]
 
-    children = [c for c in (root_cat.get("children") or []) if not only or c["id"] in only]
+    root_children = root_cat.get("children") or []
+
+    # --only-cats accepts category ids at any depth. Ancestors (minus the root) stay navigable and
+    # every other child of the root/ancestors is kept as an {"onlineOnly": true} reference.
+    parent_of = {}      # requested id -> real parent id
+    parent_chain = {}   # intermediate id -> its parent id
+    depth_of = {}
+    for rid in sorted(only):
+        info = cached("cat", rid, f"{API}/cat/{rid}?poems=true", cache, a.delay)["cat"]
+        chain = [x["id"] for x in (info.get("ancestors") or []) if x["id"] != root_id]
+        parent_of[rid] = chain[-1] if chain else root_id
+        prev = root_id
+        for depth, aid in enumerate(chain):
+            parent_chain.setdefault(aid, prev)
+            depth_of.setdefault(aid, depth)
+            prev = aid
+    ancestor_ids = sorted((x for x in parent_chain if x not in only), key=lambda x: (depth_of[x], x))
+    keep = set(only) | set(ancestor_ids)
+
+    def child_ref(c):
+        ref = {"id": c["id"], "title": clean(c["title"])}
+        if only and c["id"] not in keep:
+            ref["onlineOnly"] = True
+        return ref
+
+    def summary_of(ps, cid, count=None):
+        s = {"id": ps["id"], "categoryId": cid, "title": clean(ps.get("title")),
+             "urlSlug": ps.get("urlSlug") or ""}
+        if count is not None:
+            s["coupletCount"] = count
+        ex = clean(ps.get("excerpt"))
+        if ex:
+            s["excerpt"] = ex
+        return s
+
     categories = [{"id": root_id, "poetId": a.poet_id, "title": clean(root_cat["title"]),
                    "slug": root_cat.get("urlSlug") or a.slug,
-                   "children": [{"id": c["id"], "title": clean(c["title"])} for c in children],
+                   "children": [child_ref(c) for c in root_children],
                    "poems": []}]
     poems = []
-    queue = [(c["id"], root_id) for c in children]
+
+    # Intermediate categories: navigable shells with poem summaries (no bodies, no coupletCount).
+    for aid in ancestor_ids:
+        cat = cached("cat", aid, f"{API}/cat/{aid}?poems=true", cache, a.delay)["cat"]
+        categories.append({"id": aid, "poetId": a.poet_id, "title": clean(cat["title"]),
+                           "slug": cat.get("urlSlug") or "", "parentId": parent_chain.get(aid, root_id),
+                           "children": [child_ref(c) for c in (cat.get("children") or [])],
+                           "poems": [summary_of(ps, aid) for ps in (cat.get("poems") or [])]})
+
+    # Requested categories (or every root child): full subtree, breadth-first.
+    if only:
+        queue = [(cid, parent_of[cid]) for cid in sorted(only)]
+    else:
+        queue = [(c["id"], root_id) for c in root_children]
     seen = set()
     while queue:
         cid, parent = queue.pop(0)
@@ -193,12 +243,9 @@ def main():
             raw = cached("poem", ps["id"], f"{API}/poem/{ps['id']}?{POEM_QUERY}", cache, a.delay)
             poem = build_poem(raw, a.poet_id, cid)
             poems.append(poem)
-            s = {"id": poem["id"], "categoryId": cid, "title": poem["title"],
-                 "urlSlug": poem["urlSlug"], "coupletCount": memorizable_count(poem)}
-            ex = clean(ps.get("excerpt"))
-            if ex:
-                s["excerpt"] = ex
-            summaries.append(s)
+            summaries.append(summary_of({"id": poem["id"], "title": poem["title"],
+                                         "urlSlug": poem["urlSlug"], "excerpt": ps.get("excerpt")},
+                                        cid, memorizable_count(poem)))
         categories.append({"id": cid, "poetId": a.poet_id, "title": clean(cat["title"]),
                            "slug": cat.get("urlSlug") or "", "parentId": parent,
                            "children": [{"id": c["id"], "title": clean(c["title"])} for c in subs],
@@ -227,6 +274,9 @@ def main():
     memo = sum(memorizable_count(p) for p in poems)
     print(f"poems: {len(poems)}\ncouplets: {couplets} (memorizable {memo})\n"
           f"size: {size / 1048576:.2f} MB -> {out_path}")
+    hint = {"bundledCategoryIds": sorted(only) or None,
+            "birthYearHijri": poet.get("birthYearHijri"), "deathYearHijri": poet.get("deathYearHijri")}
+    print("catalog hint: " + json.dumps(hint))
 
 
 if __name__ == "__main__":
