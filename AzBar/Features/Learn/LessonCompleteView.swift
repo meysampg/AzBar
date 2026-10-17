@@ -30,13 +30,28 @@ struct LessonCompleteView: View {
         }
     }
 
-    private var icon: String {
-        if kind == .challenge { return passed ? "trophy.fill" : "arrow.counterclockwise.circle.fill" }
-        return "checkmark.seal.fill"
+    private var heroSymbol: String {
+        if kind == .challenge { return passed ? "trophy.fill" : "arrow.counterclockwise" }
+        return "checkmark"
     }
 
-    private var iconTint: Color {
-        passed ? (kind == .challenge ? Theme.Playful.gold : Theme.Playful.correct) : Theme.Playful.wrong
+    private var hero: some View {
+        let failed = !passed
+        let gold = kind == .challenge && passed
+        return AzMedallion(
+            diameter: 120,
+            fill: failed ? Theme.Palette.danger : (gold ? Theme.Palette.gold : Theme.Palette.teal),
+            rim: (failed || gold) ? nil : Theme.Palette.gold,
+            rimWidth: 5,
+            edge: failed ? Theme.Palette.dangerDeep : (gold ? Theme.Palette.goldEdge : Theme.Palette.tealDeep)
+        ) {
+            Image(systemName: heroSymbol)
+                .font(.system(size: 52, weight: .bold))
+                .foregroundStyle(gold ? Theme.Palette.ink : Color.white)
+                .symbolEffect(.bounce, options: .nonRepeating, value: reduceMotion ? false : appeared)
+        }
+        .padding(.bottom, Theme.Spacing.xs)
+        .accessibilityHidden(true)
     }
 
     private var levelUp: Int? {
@@ -52,11 +67,7 @@ struct LessonCompleteView: View {
         ZStack {
             ScrollView {
                 VStack(spacing: Theme.Spacing.xl) {
-                    Image(systemName: icon)
-                        .font(.system(size: 84))
-                        .foregroundStyle(iconTint)
-                        .symbolEffect(.bounce, options: .nonRepeating, value: reduceMotion ? false : appeared)
-                        .accessibilityHidden(true)
+                    hero
                     titleBlock
                     tiles
                     statusCard
@@ -64,7 +75,7 @@ struct LessonCompleteView: View {
                 }
                 .padding(.horizontal, Theme.Spacing.xl)
                 .padding(.vertical, Theme.Spacing.xl)
-                .frame(maxWidth: 520)
+                .frame(maxWidth: Theme.Layout.sessionWidth)
                 .frame(maxWidth: .infinity)
             }
             .scrollBounceBehavior(.basedOnSize)
@@ -78,10 +89,11 @@ struct LessonCompleteView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(.systemBackground))
+                .background(Theme.Palette.paper)
                 .transition(.opacity)
             }
         }
+        .azScreenBackground()
         .safeAreaInset(edge: .bottom, spacing: 0) {
             if !isCelebrating { actions }
         }
@@ -96,25 +108,27 @@ struct LessonCompleteView: View {
     private var titleBlock: some View {
         VStack(spacing: Theme.Spacing.s) {
             Text(heading)
-                .font(.app(.largeTitle))
+                .font(.azDisplay)
+                .foregroundStyle(Theme.Palette.ink)
                 .accessibilityAddTraits(.isHeader)
             if kind == .challenge && !passed {
                 Text("دوباره تلاش کنید")
-                    .font(.app(.body))
-                    .foregroundStyle(.secondary)
+                    .font(.azBody)
+                    .foregroundStyle(Theme.Palette.inkSecondary)
             }
             if learnedCount > 0 {
                 Text("\(learnedCount.fa) بیت تازه از بر شد")
                     .font(.app(.title3))
+                    .foregroundStyle(Theme.Palette.ink)
             }
             if isPoemComplete {
                 Text("همهٔ بیت‌های این شعر را آموختید")
-                    .font(.app(.body))
-                    .foregroundStyle(.secondary)
+                    .font(.azBody)
+                    .foregroundStyle(Theme.Palette.inkSecondary)
             } else if kind == .lesson && learnedCount > 0 {
                 Text("بیت‌ها فردا در بخش مرور به شما یادآوری می‌شوند.")
-                    .font(.app(.subheadline))
-                    .foregroundStyle(.secondary)
+                    .font(.azMeta)
+                    .foregroundStyle(Theme.Palette.inkSecondary)
             }
         }
         .multilineTextAlignment(.center)
@@ -122,13 +136,13 @@ struct LessonCompleteView: View {
 
     private var tiles: some View {
         HStack(spacing: Theme.Spacing.m) {
-            StatTile(title: "امتیاز", value: "+\(xp.fa)", systemImage: "bolt.fill", tint: Theme.Playful.xp)
+            StatTile(title: "امتیاز", value: "+\(xp.fa)", systemImage: "bolt.fill", tint: Theme.Palette.gold)
             if let accuracy = reward?.accuracy {
                 StatTile(title: "دقت", value: "\(Int((accuracy * 100).rounded()).fa)٪",
-                         systemImage: "target", tint: Theme.Playful.correct)
+                         systemImage: "target", tint: Theme.Palette.success)
             }
             if learnedCount > 0 {
-                StatTile(title: "بیت تازه", value: learnedCount.fa, systemImage: "text.book.closed", tint: .blue)
+                StatTile(title: "بیت تازه", value: learnedCount.fa, systemImage: "text.book.closed", tint: Theme.Palette.teal)
             }
         }
     }
@@ -142,22 +156,20 @@ struct LessonCompleteView: View {
             HStack(spacing: Theme.Spacing.l) {
                 StreakFlame(streak: streak, isActiveToday: streak > 0, size: 44)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(streak.fa) روز پیاپی").font(.app(.headline))
+                    Text("\(streak.fa) روز پیاپی").font(.azHeadline).foregroundStyle(Theme.Palette.ink)
                     Text("سطح \(info.level.fa) · \(LevelText.title(level: info.level))")
-                        .font(.app(.footnote))
-                        .foregroundStyle(.secondary)
+                        .font(.azMeta)
+                        .foregroundStyle(Theme.Palette.inkSecondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 VStack(spacing: 2) {
                     DailyGoalRing(xp: today, goal: goal, size: 60)
-                    Text("هدف روزانه").font(.app(.caption)).foregroundStyle(.secondary)
+                    Text("هدف روزانه").font(.azCaption).foregroundStyle(Theme.Palette.inkSecondary)
                 }
             }
-            LessonProgressBar(value: info.fraction, tint: Theme.Playful.xp, height: 10)
-                .accessibilityLabel("پیشرفت سطح")
+            AzProgressBar(value: info.fraction, tint: Theme.Palette.gold, height: 10, label: "پیشرفت سطح")
         }
-        .padding(Theme.Spacing.l)
-        .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
+        .azCard()
         .accessibilityElement(children: .contain)
     }
 
@@ -165,15 +177,15 @@ struct LessonCompleteView: View {
         VStack(spacing: Theme.Spacing.m) {
             if let level = levelUp {
                 Label("به سطح \(level.fa) رسیدید", systemImage: "star.circle.fill")
-                    .font(.app(.headline))
-                    .foregroundStyle(Theme.Playful.gold)
+                    .font(.azHeadline)
+                    .foregroundStyle(Theme.Palette.goldDeep)
             }
             if !newBadges.isEmpty {
                 HStack(spacing: Theme.Spacing.l) {
                     ForEach(newBadges, id: \.self) { badge in
                         VStack(spacing: Theme.Spacing.xs) {
                             BadgeMedal(badge: badge, unlocked: true, size: 56)
-                            Text(badge.title).font(.app(.caption))
+                            Text(badge.title).font(.azCaption).foregroundStyle(Theme.Palette.ink)
                         }
                         .accessibilityElement(children: .combine)
                     }
@@ -190,14 +202,17 @@ struct LessonCompleteView: View {
                     Button("ادامه") {
                         withAnimation(reduceMotion ? nil : .smooth) { isCelebrating = true }
                     }
-                    .buttonStyle(.chunky(Theme.Playful.correct))
+                    .buttonStyle(.azPrimary)
                 } else {
                     if hasNextLesson {
                         Button("درس بعدی", action: onNext)
-                            .buttonStyle(.chunky(Theme.Playful.correct))
+                            .buttonStyle(.azPrimary)
+                        Button("پایان", action: onFinish)
+                            .buttonStyle(.azSecondary)
+                    } else {
+                        Button("پایان", action: onFinish)
+                            .buttonStyle(.azPrimary)
                     }
-                    Button("پایان", action: onFinish)
-                        .buttonStyle(.chunky(hasNextLesson ? .blue : Theme.Playful.correct, filled: !hasNextLesson))
                 }
             }
         }

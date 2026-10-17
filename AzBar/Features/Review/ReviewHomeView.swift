@@ -8,65 +8,66 @@ struct ReviewHomeView: View {
 
     var body: some View {
         let plans = progress.activePlans()
-        List {
-            if due > 0 {
-                Section { dueCard }
-            } else {
-                Section { emptyState }
-                    .listRowBackground(Color.clear)
-            }
-            if !plans.isEmpty {
-                Section {
-                    ForEach(plans, id: \.poemId) { plan in
-                        PlanRingRow(plan: plan)
+        ScrollView {
+            VStack(alignment: .leading, spacing: Theme.Layout.sectionGap) {
+                if due > 0 {
+                    dueCard
+                } else {
+                    emptyState
+                }
+                if !plans.isEmpty {
+                    VStack(alignment: .leading, spacing: Theme.Spacing.m) {
+                        AzSectionHeader("در حال حفظ")
+                        VStack(spacing: 0) {
+                            ForEach(Array(plans.enumerated()), id: \.element.poemId) { index, plan in
+                                if index > 0 { Divider().overlay(Theme.Palette.hairline) }
+                                PlanRingRow(plan: plan)
+                            }
+                        }
+                        .azCard(padding: 0)
                     }
-                } header: {
-                    Text("در حال حفظ").font(.app(.footnote))
                 }
             }
+            .padding(.horizontal, Theme.Layout.margin)
+            .padding(.vertical, Theme.Spacing.l)
+            .frame(maxWidth: Theme.Layout.readableWidth)
+            .frame(maxWidth: .infinity)
         }
-        .listStyle(.insetGrouped)
+        .azScreenBackground()
         .navigationTitle("مرور")
     }
 
     private var dueCard: some View {
         VStack(spacing: Theme.Spacing.m) {
             Text(due.fa)
-                .font(.app(.largeTitle))
+                .font(.azDisplay)
+                .foregroundStyle(Theme.Palette.teal)
                 .contentTransition(.numericText())
             Text("بیت برای مرور")
-                .font(.app(.headline))
+                .font(.azHeadline)
+                .foregroundStyle(Theme.Palette.ink)
             let today = progress.todayActivity().reviews
             if today > 0 {
                 Text("\(today.fa) بیت امروز")
-                    .font(.app(.footnote))
-                    .foregroundStyle(.secondary)
+                    .font(.azMeta)
+                    .foregroundStyle(Theme.Palette.inkSecondary)
             }
-            Button {
-                model.isReviewPresented = true
-            } label: {
-                Text("شروع مرور")
-                    .font(.app(.headline))
-                    .frame(maxWidth: .infinity, minHeight: 36)
-            }
-            .buttonStyle(.glassProminent)
-            .controlSize(.large)
+            Button("شروع مرور") { model.isReviewPresented = true }
+                .buttonStyle(.azPrimary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, Theme.Spacing.s)
+        .azCard()
         .accessibilityElement(children: .contain)
     }
 
     private var emptyState: some View {
-        ContentUnavailableView {
-            Label("مروری باقی نمانده", systemImage: "checkmark.seal")
-        } description: {
-            if let next = progress.nextDueDate() {
-                Text("مرور بعدی: \(relative(next))")
-            } else {
-                Text("شعری را به فهرست حفظ بیفزایید تا مرور آغاز شود.")
-            }
-        }
+        AzEmptyState(
+            "checkmark.seal", "مروری باقی نمانده",
+            progress.nextDueDate().map { "مرور بعدی: \(relative($0))" }
+                ?? "شعری را به فهرست حفظ بیفزایید تا مرور آغاز شود."
+        )
+        .frame(maxWidth: .infinity)
+        .azCard()
     }
 
     private func relative(_ date: Date) -> String {
@@ -91,12 +92,14 @@ private struct PlanRingRow: View {
             HStack(spacing: Theme.Spacing.m) {
                 ProgressRing(value: p.fraction, showsPercent: true)
                     .frame(width: 44, height: 44)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(verbatim: plan.title).font(.app(.headline))
-                    Text(verbatim: plan.poetName).font(.app(.subheadline)).foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                    Text(verbatim: plan.title).font(.azHeadline).foregroundStyle(Theme.Palette.ink)
+                    Text(verbatim: plan.poetName).font(.azMeta).foregroundStyle(Theme.Palette.inkSecondary)
                 }
                 Spacer()
             }
+            .padding(.horizontal, Theme.Layout.cardPadding)
+            .padding(.vertical, Theme.Spacing.m)
             .contentShape(.rect)
         }
         .buttonStyle(.plain)

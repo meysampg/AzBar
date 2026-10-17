@@ -9,13 +9,14 @@ struct BadgeTile: View {
         VStack(spacing: Theme.Spacing.s) {
             BadgeMedal(badge: badge, unlocked: unlocked, size: 64)
             Text(badge.title)
-                .font(.app(.caption, weight: .semibold))
+                .font(.azCaption)
+                .foregroundStyle(Theme.Palette.ink)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
             if !unlocked {
                 Text("\(progress.current.fa)/\(progress.target.fa)")
-                    .font(.app(.caption2))
-                    .foregroundStyle(.secondary)
+                    .font(.azCaption)
+                    .foregroundStyle(Theme.Palette.inkSecondary)
             }
         }
         .frame(maxWidth: .infinity)

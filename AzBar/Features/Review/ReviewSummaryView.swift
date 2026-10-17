@@ -33,7 +33,7 @@ struct ReviewSummaryView: View {
                     onDone()
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(Color(.systemBackground))
+                .background(Theme.Palette.paper.ignoresSafeArea())
                 .transition(.opacity)
             }
         }
@@ -44,10 +44,10 @@ struct ReviewSummaryView: View {
                         Button("ادامه") {
                             withAnimation(reduceMotion ? nil : .smooth) { isCelebrating = true }
                         }
-                        .buttonStyle(.chunky(.blue))
+                        .buttonStyle(.azPrimary)
                     } else {
                         Button("پایان", action: onDone)
-                            .buttonStyle(.chunky(.blue))
+                            .buttonStyle(.azPrimary)
                     }
                 }
             }
@@ -63,54 +63,59 @@ struct ReviewSummaryView: View {
     private var summary: some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.xl) {
-                Image(systemName: "flame.fill")
-                    .font(.system(size: 76))
-                    .foregroundStyle(.orange)
-                    .symbolEffect(.bounce, options: .nonRepeating, value: reduceMotion ? false : appeared)
-                    .accessibilityHidden(true)
+                AzMedallion(diameter: 96, fill: Theme.Palette.teal, edge: Theme.Palette.tealDeep) {
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 44, weight: .bold))
+                        .foregroundStyle(.white)
+                        .symbolEffect(.bounce, options: .nonRepeating, value: reduceMotion ? false : appeared)
+                }
+                .frame(width: 96, height: 100)
+                .accessibilityHidden(true)
                 VStack(spacing: Theme.Spacing.s) {
                     Text("مرور امروز تمام شد")
-                        .font(.app(.title))
+                        .font(.azDisplay)
+                        .foregroundStyle(Theme.Palette.ink)
                         .multilineTextAlignment(.center)
                         .accessibilityAddTraits(.isHeader)
                     Text("\(total.fa) بیت مرور شد")
-                        .font(.app(.body))
-                        .foregroundStyle(.secondary)
+                        .font(.azBody)
+                        .foregroundStyle(Theme.Palette.inkSecondary)
+                }
+                HStack(spacing: Theme.Spacing.m) {
+                    StatTile(title: "امتیاز", value: "+\(xp.fa)", systemImage: "bolt.fill", tint: Theme.Palette.gold)
+                    StatTile(title: "مرورشده", value: total.fa, systemImage: "rectangle.stack.fill", tint: Theme.Palette.teal)
+                }
+                ratingChips
+                if streak > 0 {
                     HStack(spacing: Theme.Spacing.m) {
-                        StatTile(title: "امتیاز", value: "+\(xp.fa)", systemImage: "bolt.fill", tint: Theme.Playful.xp)
-                        StatTile(title: "مرورشده", value: total.fa, systemImage: "rectangle.stack.fill", tint: .blue)
-                    }
-                    .padding(.top, Theme.Spacing.s)
-                    if streak > 0 {
+                        StreakFlame(streak: streak, isActiveToday: true, size: 30)
+                            .accessibilityHidden(true)
                         Text("\(streak.fa) روز پیاپی")
-                            .font(.app(.headline))
-                            .foregroundStyle(.orange)
+                            .font(.azHeadline)
+                            .foregroundStyle(Theme.Palette.ink)
+                        Spacer(minLength: 0)
                     }
+                    .azCard()
+                    .accessibilityElement(children: .combine)
                 }
-                VStack(spacing: 0) {
-                    ForEach(Array(Rating.allCases.enumerated()), id: \.element) { index, rating in
-                        if index > 0 { Divider() }
-                        HStack {
-                            Circle().fill(Theme.color(for: rating)).frame(width: 10, height: 10)
-                                .accessibilityHidden(true)
-                            Text(Theme.title(for: rating))
-                            Spacer()
-                            Text((counts[rating] ?? 0).fa)
-                                .foregroundStyle(.secondary)
-                        }
-                        .font(.app(.body))
-                        .padding(.vertical, Theme.Spacing.m)
-                        .accessibilityElement(children: .combine)
-                    }
-                }
-                .padding(.horizontal, Theme.Spacing.l)
-                .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
             }
-            .padding(Theme.Spacing.xl)
-            .frame(maxWidth: 520)
+            .padding(Theme.Layout.margin)
+            .frame(maxWidth: Theme.Layout.sessionWidth)
             .frame(maxWidth: .infinity)
         }
         .scrollBounceBehavior(.basedOnSize)
+        .azScreenBackground()
+    }
+
+    private var ratingChips: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 120), spacing: Theme.Spacing.s)], spacing: Theme.Spacing.s) {
+            ForEach(Rating.allCases, id: \.self) { rating in
+                AzChip("\(Theme.title(for: rating)) \((counts[rating] ?? 0).fa)", tone: AzTone(rating))
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(Theme.title(for: rating))
+                    .accessibilityValue((counts[rating] ?? 0).fa)
+            }
+        }
     }
 }
 

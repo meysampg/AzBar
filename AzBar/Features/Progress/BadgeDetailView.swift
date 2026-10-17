@@ -9,26 +9,27 @@ struct BadgeDetailView: View {
         VStack(spacing: Theme.Spacing.m) {
             BadgeMedal(badge: badge, unlocked: unlockedAt != nil, size: 110)
                 .padding(.top, Theme.Spacing.xl)
-            Text(badge.title).font(.app(.title2))
+            Text(badge.title).font(.azTitle).foregroundStyle(Theme.Palette.ink)
             Text(badge.detail)
-                .font(.app(.body))
-                .foregroundStyle(.secondary)
+                .font(.azBody)
+                .foregroundStyle(Theme.Palette.inkSecondary)
                 .multilineTextAlignment(.center)
             if let unlockedAt {
                 Text("به دست آمده در \(Self.dateText(unlockedAt))")
-                    .font(.app(.subheadline))
-                    .foregroundStyle(Theme.Playful.correct)
+                    .font(.azMeta)
+                    .foregroundStyle(Theme.Palette.successDeep)
             } else {
-                LessonProgressBar(value: progress.fraction, height: 12)
+                AzProgressBar(value: progress.fraction, tint: badge.tint, height: 10)
                     .padding(.horizontal, Theme.Spacing.xl)
                 Text("\(progress.current.fa) از \(progress.target.fa)")
-                    .font(.app(.subheadline))
-                    .foregroundStyle(.secondary)
+                    .font(.azMeta)
+                    .foregroundStyle(Theme.Palette.inkSecondary)
             }
             Spacer(minLength: 0)
         }
         .padding(.horizontal, Theme.Spacing.l)
         .frame(maxWidth: .infinity)
+        .azScreenBackground()
         .presentationDetents([.medium])
         .persianRoot()
     }

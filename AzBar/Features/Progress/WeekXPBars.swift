@@ -15,23 +15,23 @@ struct WeekXPBars: View {
                 let isToday = i == week.count - 1
                 VStack(spacing: Theme.Spacing.xs) {
                     Text(entry.xp.fa)
-                        .font(.app(.caption2))
-                        .foregroundStyle(.secondary)
+                        .font(.azCaption)
+                        .foregroundStyle(Theme.Palette.inkSecondary)
                     ZStack(alignment: .bottom) {
-                        Capsule().fill(.quaternary)
+                        Capsule().fill(Theme.Palette.track)
                         Capsule()
-                            .fill(entry.xp >= goal ? Theme.Playful.correct : Theme.Playful.xp)
+                            .fill(entry.xp >= goal ? Theme.Palette.teal : Theme.Palette.gold)
                             .frame(height: max(entry.xp > 0 ? 8 : 0, barHeight * Double(entry.xp) / maxValue))
                     }
                     .frame(height: barHeight)
                     Text(Self.weekdayInitial(entry.day))
-                        .font(.app(.caption, weight: isToday ? .bold : nil))
-                        .foregroundStyle(isToday ? Color.primary : Color.secondary)
+                        .font(isToday ? .app(.caption, weight: .bold) : .azCaption)
+                        .foregroundStyle(isToday ? Theme.Palette.teal : Theme.Palette.inkSecondary)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, Theme.Spacing.xs)
                 .background {
-                    if isToday { RoundedRectangle(cornerRadius: Theme.Radius.small).fill(Theme.Playful.xp.opacity(0.12)) }
+                    if isToday { RoundedRectangle(cornerRadius: Theme.Radius.token, style: .continuous).fill(Theme.Palette.goldSoft) }
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Self.weekdayName(entry.day))
@@ -46,7 +46,7 @@ struct WeekXPBars: View {
                     p.move(to: CGPoint(x: 0, y: y))
                     p.addLine(to: CGPoint(x: geo.size.width, y: y))
                 }
-                .stroke(Theme.Playful.correct.opacity(0.7), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
+                .stroke(Theme.Palette.teal.opacity(0.5), style: StrokeStyle(lineWidth: 1, dash: [4, 4]))
             }
             .allowsHitTesting(false)
             .accessibilityHidden(true)

@@ -12,15 +12,12 @@ struct ReviewSessionView: View {
             Group {
                 switch model.phase {
                 case .loading:
-                    ProgressView()
-                        .controlSize(.large)
+                    AzLoadingView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 case .empty:
-                    ContentUnavailableView(
-                        "مروری باقی نمانده",
-                        systemImage: "checkmark.seal",
-                        description: Text("بیتی برای مرور آماده نیست.")
-                    )
+                    AzEmptyState("checkmark.seal", "مروری باقی نمانده", "بیتی برای مرور آماده نیست.")
+                        .padding(Theme.Layout.margin)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 case .session:
                     sessionContent
                 case .summary:
@@ -28,6 +25,7 @@ struct ReviewSessionView: View {
                                       reward: model.reward, onDone: { dismiss() })
                 }
             }
+            .azScreenBackground()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -39,7 +37,8 @@ struct ReviewSessionView: View {
                 if model.phase == .session {
                     ToolbarItem(placement: .principal) {
                         Text("\(model.position.fa) از \(model.total.fa)")
-                            .font(.app(.headline))
+                            .font(.azHeadline)
+                            .foregroundStyle(Theme.Palette.ink)
                             .accessibilityAddTraits(.isHeader)
                     }
                 }
@@ -65,7 +64,7 @@ struct ReviewSessionView: View {
         .scrollBounceBehavior(.basedOnSize)
         .animation(reduceMotion ? nil : .smooth(duration: 0.25), value: model.stepKey)
         .safeAreaInset(edge: .top, spacing: 0) {
-            LessonProgressBar(value: model.progressValue, tint: .blue)
+            AzProgressBar(value: model.progressValue, tint: Theme.Palette.teal)
                 .padding(.horizontal, Theme.Spacing.l)
                 .padding(.vertical, Theme.Spacing.s)
         }
@@ -86,12 +85,13 @@ struct ReviewStepBody: View {
         VStack(spacing: Theme.Spacing.xl) {
             VStack(spacing: Theme.Spacing.xs) {
                 Text(model.heading)
-                    .font(.app(.title3))
+                    .font(.app(.title3, weight: .bold))
+                    .foregroundStyle(Theme.Palette.ink)
                     .multilineTextAlignment(.center)
                     .accessibilityAddTraits(.isHeader)
                 Text(verbatim: model.contextTitle)
-                    .font(.app(.footnote))
-                    .foregroundStyle(.secondary)
+                    .font(.azMeta)
+                    .foregroundStyle(Theme.Palette.inkSecondary)
             }
             .frame(maxWidth: .infinity)
             if let couplet = model.couplet {
@@ -100,7 +100,7 @@ struct ReviewStepBody: View {
         }
         .padding(.horizontal, Theme.Spacing.l)
         .padding(.vertical, Theme.Spacing.xl)
-        .frame(maxWidth: 640)
+        .frame(maxWidth: Theme.Layout.sessionWidth)
         .frame(maxWidth: .infinity)
     }
 
@@ -127,7 +127,7 @@ struct ReviewStepBody: View {
                         .accessibilityLabel("بیت پیشین")
                 }
                 Image(systemName: "arrow.down")
-                    .foregroundStyle(.tertiary)
+                    .foregroundStyle(Theme.Palette.inkTertiary)
                     .accessibilityHidden(true)
                 if model.isRevealed {
                     RevealedCoupletCard(couplet: couplet, showMeaning: settings?.showMeaning ?? false)
@@ -165,7 +165,7 @@ struct ReviewBottomBar: View {
                 Button { animated { model.reveal() } } label: {
                     Label("نمایش پاسخ", systemImage: "eye")
                 }
-                .buttonStyle(.chunky(.blue))
+                .buttonStyle(.azSecondary)
             }
         }
         .sensoryFeedback(.selection, trigger: model.isRevealed)

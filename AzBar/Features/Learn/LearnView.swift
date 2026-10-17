@@ -20,18 +20,19 @@ struct LearnView: View {
             Group {
                 switch model.phase {
                 case .loading:
-                    ProgressView()
-                        .controlSize(.large)
+                    AzLoadingView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 case .failed:
-                    ContentUnavailableView {
-                        Label("بارگذاری شعر ممکن نشد", systemImage: "exclamationmark.triangle")
-                    } actions: {
-                        Button("تلاش دوباره") {
-                            Task { await reload() }
-                        }
-                        .buttonStyle(.glass)
+                    AzEmptyState("exclamationmark.triangle", "بارگذاری شعر ممکن نشد", nil, "تلاش دوباره") {
+                        Task { await reload() }
                     }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                case .unavailable:
+                    AzEmptyState("text.alignright", "این متن بیتی برای حفظ ندارد",
+                                 "متن‌های نثر را می‌توان خواند، اما مسیر حفظ ندارند.", "بستن") {
+                        dismiss()
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 case .session:
                     sessionContent
                 case .summary:
@@ -50,6 +51,7 @@ struct LearnView: View {
                     )
                 }
             }
+            .azScreenBackground()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -65,7 +67,8 @@ struct LearnView: View {
                 if model.phase == .session {
                     ToolbarItem(placement: .principal) {
                         Text(model.titleText)
-                            .font(.app(.headline))
+                            .font(.azHeadline)
+                            .foregroundStyle(Theme.Palette.ink)
                             .accessibilityAddTraits(.isHeader)
                     }
                 }
@@ -94,9 +97,12 @@ struct LearnView: View {
         .scrollBounceBehavior(.basedOnSize)
         .animation(reduceMotion ? nil : .smooth(duration: 0.25), value: model.stepKey)
         .safeAreaInset(edge: .top, spacing: 0) {
-            LessonProgressBar(value: model.progressValue)
-                .padding(.horizontal, Theme.Spacing.l)
+            AzProgressBar(value: model.progressValue, tint: Theme.Palette.teal, height: 12, label: "پیشرفت جلسه")
+                .padding(.horizontal, Theme.Layout.margin)
                 .padding(.vertical, Theme.Spacing.s)
+                .frame(maxWidth: Theme.Layout.sessionWidth)
+                .frame(maxWidth: .infinity)
+                .background(Theme.Palette.paper)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             LearnBottomBar(model: model)

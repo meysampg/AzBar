@@ -23,12 +23,15 @@ struct SettingsView: View {
             Section {
                 NavigationLink("دربارهٔ ازبر") { AboutView() }
             } header: {
-                Text("دربارهٔ برنامه").font(.app(.footnote))
+                AzListHeader("دربارهٔ برنامه")
             }
         }
+        .azList()
+        .foregroundStyle(Theme.Palette.ink)
+        .tint(Theme.Palette.teal)
         .navigationTitle("تنظیمات")
         .task {
-            reciters = await content.recitationArtists(poetId: 2)
+            reciters = await content.recitationArtists()
             await refreshStatus()
         }
         .onChange(of: scenePhase) { _, phase in
@@ -54,7 +57,7 @@ struct SettingsView: View {
                     Text("اندازهٔ قلم")
                     Spacer()
                     Text(self.settings.poemFontSize.fa(fractionDigits: 0))
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.Palette.inkSecondary)
                         .monospacedDigit()
                 }
                 Slider(value: settings.poemFontSize, in: 16...36, step: 1) {
@@ -71,12 +74,19 @@ struct SettingsView: View {
                 CoupletView(couplet: couplet, layout: .stacked, showMeaning: false) {
                     self.settings.showDiacritics ? $0 : PersianText.removingDiacritics($0)
                 }
+                .padding(.vertical, Theme.Spacing.s)
+                .frame(maxWidth: .infinity)
+                .listRowBackground(
+                    RoundedRectangle(cornerRadius: Theme.Radius.tile, style: .continuous)
+                        .fill(Theme.Palette.tealSoft)
+                        .padding(.vertical, Theme.Spacing.xs)
+                )
                 .listRowInsets(EdgeInsets(top: Theme.Spacing.s, leading: Theme.Spacing.m,
                                           bottom: Theme.Spacing.s, trailing: Theme.Spacing.m))
                 .accessibilityLabel("پیش‌نمایش قلم")
             }
         } header: {
-            Text("قلم شعر").font(.app(.footnote))
+            AzListHeader("قلم شعر")
         }
     }
 
@@ -87,7 +97,7 @@ struct SettingsView: View {
             Toggle("نمایش معنی بیت‌ها", isOn: settings.showMeaning)
             Toggle("نمایش اعراب", isOn: settings.showDiacritics)
         } header: {
-            Text("نمایش").font(.app(.footnote))
+            AzListHeader("نمایش")
         }
     }
 
@@ -103,16 +113,18 @@ struct SettingsView: View {
                 DatePicker("ساعت یادآوری", selection: reminderTime, displayedComponents: .hourAndMinute)
             }
         } header: {
-            Text("یادآوری").font(.app(.footnote))
+            AzListHeader("یادآوری")
         } footer: {
             if notificationStatus == .denied {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                     Text("اجازهٔ اعلان داده نشده است")
                     if let url = URL(string: UIApplication.openSettingsURLString) {
                         Link("باز کردن تنظیمات", destination: url)
+                        .foregroundStyle(Theme.Palette.teal)
                     }
                 }
-                .font(.app(.footnote))
+                .font(.azCaption)
+                .foregroundStyle(Theme.Palette.inkSecondary)
             }
         }
         .sensoryFeedback(.selection, trigger: self.settings.remindersEnabled)
@@ -177,10 +189,11 @@ struct SettingsView: View {
             Stepper("سقف مرور روزانه: \(self.settings.dailyReviewLimit.fa)",
                     value: settings.dailyReviewLimit, in: 20...500, step: 10)
         } header: {
-            Text("حفظ").font(.app(.footnote))
+            AzListHeader("حفظ")
         } footer: {
             Text("هدف یادسپاری بالاتر یعنی مرورهای نزدیک‌تر و بار روزانهٔ بیشتر.")
-                .font(.app(.footnote))
+                .font(.azCaption)
+                .foregroundStyle(Theme.Palette.inkSecondary)
         }
     }
 
@@ -196,9 +209,11 @@ struct SettingsView: View {
             Toggle("صداها", isOn: settings.soundsEnabled)
             Toggle("تمرین‌های تعاملی", isOn: settings.exercisesEnabled)
         } header: {
-            Text("انگیزه").font(.app(.footnote))
+            AzListHeader("انگیزه")
         } footer: {
-            Text("واژه‌چینی و انتخاب واژه در درس‌ها").font(.app(.footnote))
+            Text("واژه‌چینی و انتخاب واژه در درس‌ها")
+                .font(.azCaption)
+                .foregroundStyle(Theme.Palette.inkSecondary)
         }
     }
 
@@ -215,7 +230,7 @@ struct SettingsView: View {
                 }
             }
         } header: {
-            Text("خوانش").font(.app(.footnote))
+            AzListHeader("خوانش")
         }
     }
 }

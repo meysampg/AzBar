@@ -30,6 +30,7 @@ struct FalView: View {
                         .transition(.opacity)
                 }
             }
+            .azScreenBackground()
             .animation(reduceMotion ? .easeInOut(duration: 0.3) : .smooth(duration: 0.5), value: model.phase)
             .navigationTitle("فال حافظ")
             .navigationBarTitleDisplayMode(.inline)
@@ -89,35 +90,47 @@ private struct FalNiyyatView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.xl) {
-                Image(systemName: "book.closed.fill")
-                    .font(.system(size: 64))
-                    .foregroundStyle(.tint)
-                    .symbolEffect(.breathe, isActive: !reduceMotion)
+                Circle()
+                    .fill(Theme.Palette.goldSoft)
+                    .frame(width: 120, height: 120)
+                    .overlay {
+                        Image(systemName: "book.closed.fill")
+                            .font(.system(size: 64))
+                            .foregroundStyle(Theme.Palette.goldDeep)
+                            .symbolEffect(.breathe, isActive: !reduceMotion)
+                    }
                     .accessibilityHidden(true)
                 Text("فال حافظ")
-                    .font(.app(.largeTitle))
+                    .font(.azTitle)
+                    .foregroundStyle(Theme.Palette.ink)
                     .accessibilityAddTraits(.isHeader)
                 Text(verbatim: niyyat)
                     .font(.poem(settings.poemFont, size: 20))
                     .lineSpacing(settings.poemFont.lineSpacing(20))
                     .padding(.vertical, settings.poemFont.verticalPadding(20))
+                    .foregroundStyle(Theme.Palette.ink)
                     .multilineTextAlignment(.center)
-                    .padding(Theme.Spacing.xl)
                     .frame(maxWidth: .infinity)
-                    .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
+                    .azCard(padding: Theme.Spacing.xl)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                            .strokeBorder(Theme.Palette.gold, lineWidth: 1)
+                    }
                 Text("فال حافظ رسمی دیرینه در فرهنگ ایرانی است: غزلی تصادفی از دیوان برای خواندن، تأمل و از بر کردن.")
-                    .font(.app(.footnote))
-                    .foregroundStyle(.secondary)
+                    .font(.azMeta)
+                    .foregroundStyle(Theme.Palette.inkSecondary)
                     .multilineTextAlignment(.center)
             }
-            .padding(.horizontal, Theme.Spacing.l)
+            .padding(.horizontal, Theme.Layout.margin)
             .padding(.top, Theme.Spacing.xl)
+            .frame(maxWidth: Theme.Layout.readableWidth)
+            .frame(maxWidth: .infinity)
         }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: Theme.Spacing.m) {
                 Text("نیت کنید و دکمه را نگه دارید")
-                    .font(.app(.footnote))
-                    .foregroundStyle(.secondary)
+                    .font(.azMeta)
+                    .foregroundStyle(Theme.Palette.inkSecondary)
                 HoldToConfirmButton("نیت کردم", onConfirm: onConfirm)
             }
             .padding(.bottom, Theme.Spacing.l)
@@ -133,14 +146,19 @@ private struct FalOpeningView: View {
 
     var body: some View {
         VStack(spacing: Theme.Spacing.l) {
-            Image(systemName: "book.fill")
-                .font(.system(size: 72))
-                .foregroundStyle(.tint)
-                .symbolEffect(.wiggle, options: .repeating, isActive: !reduceMotion)
+            Circle()
+                .fill(Theme.Palette.goldSoft)
+                .frame(width: 120, height: 120)
+                .overlay {
+                    Image(systemName: "book.fill")
+                        .font(.system(size: 64))
+                        .foregroundStyle(Theme.Palette.goldDeep)
+                        .symbolEffect(.wiggle, options: .repeating, isActive: !reduceMotion)
+                }
                 .accessibilityHidden(true)
             Text("در حال گشودن دیوان…")
-                .font(.app(.headline))
-                .foregroundStyle(.secondary)
+                .font(.azHeadline)
+                .foregroundStyle(Theme.Palette.inkSecondary)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .accessibilityElement(children: .combine)
@@ -170,72 +188,69 @@ private struct FalResultView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 22) {
+            VStack(spacing: Theme.Spacing.l) {
                 Text("فال شما: \(poem.title)")
-                    .font(.app(.title2))
+                    .font(.azTitle)
+                    .foregroundStyle(Theme.Palette.ink)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
                     .accessibilityAddTraits(.isHeader)
 
-                ForEach(poem.couplets) { couplet in
-                    CoupletView(couplet: couplet, layout: layout, showMeaning: settings.showMeaning,
-                                transform: settings.showDiacritics ? { $0 } : { PersianText.removingDiacritics($0) })
+                VStack(spacing: Theme.Spacing.xl - 4) {
+                    ForEach(poem.couplets) { couplet in
+                        CoupletView(couplet: couplet, layout: layout, showMeaning: settings.showMeaning,
+                                    transform: settings.showDiacritics ? { $0 } : { PersianText.removingDiacritics($0) })
+                    }
                 }
+                .frame(maxWidth: .infinity)
+                .azCard()
 
                 if let summary = poem.summary, !summary.isEmpty {
                     VStack(alignment: .leading, spacing: Theme.Spacing.s) {
-                        Label("تفسیر", systemImage: "text.book.closed")
-                            .font(.app(.headline))
+                        AzSectionHeader("تفسیر")
                         Text(verbatim: summary)
-                            .font(.app(.subheadline))
-                            .foregroundStyle(.secondary)
+                            .font(.azMeta)
+                            .foregroundStyle(Theme.Palette.inkSecondary)
                             .lineSpacing(4)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(Theme.Spacing.l)
-                    .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
+                    .azCard()
                 }
             }
-            .padding(.horizontal, Theme.Spacing.l)
+            .padding(.horizontal, Theme.Layout.margin)
             .padding(.vertical, Theme.Spacing.l)
+            .frame(maxWidth: Theme.Layout.readableWidth)
+            .frame(maxWidth: .infinity)
         }
         .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
         .safeAreaInset(edge: .bottom) { actions }
     }
 
     private var actions: some View {
-        GlassEffectContainer(spacing: Theme.Spacing.m) {
+        SessionActionBar {
             HStack(spacing: Theme.Spacing.m) {
                 if let recitation {
                     Button {
                         Task { await togglePlayback(recitation) }
                     } label: {
                         Label(isPlayingThis ? "توقف" : "پخش", systemImage: isPlayingThis ? "pause.fill" : "play.fill")
-                            .font(.app(.subheadline, weight: .medium))
                             .lineLimit(1)
                     }
-                    .buttonStyle(.glass)
-                    .controlSize(.large)
+                    .buttonStyle(.azSecondary)
                 }
-                Button(action: onMemorize) {
-                    Text("حفظ کن")
-                        .font(.app(.headline))
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity)
+                if !poem.memorizableCouplets.isEmpty {
+                    Button(action: onMemorize) {
+                        Text("حفظ کن").lineLimit(1)
+                    }
+                    .buttonStyle(.azPrimary)
                 }
-                .buttonStyle(.glassProminent)
-                .controlSize(.large)
-
                 ShareLink(item: poem.plainText, subject: Text(verbatim: poem.title)) {
                     Label("اشتراک‌گذاری", systemImage: "square.and.arrow.up")
                         .labelStyle(.iconOnly)
                 }
-                .buttonStyle(.glass)
-                .controlSize(.large)
+                .buttonStyle(.azSecondary)
             }
         }
-        .padding(.horizontal, Theme.Spacing.l)
-        .padding(.bottom, Theme.Spacing.s)
     }
 
     private func togglePlayback(_ recitation: Recitation) async {

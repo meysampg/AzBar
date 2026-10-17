@@ -13,28 +13,33 @@ struct PoemRow: View {
                 VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
                     Text(verbatim: summary.title)
                         .font(.app(.body, weight: .medium))
+                        .foregroundStyle(Theme.Palette.ink)
                     if let excerpt = summary.excerpt, !excerpt.isEmpty {
                         Text(verbatim: PersianText.removingDiacritics(excerpt))
-                            .font(.app(.footnote))
-                            .foregroundStyle(.secondary)
+                            .font(.poem(.naskh, size: 16))
+                            .foregroundStyle(Theme.Palette.inkSecondary)
                             .lineLimit(1)
                     }
                 }
                 Spacer(minLength: 0)
+                if summary.coupletCount == 0 {
+                    AzChip("نثر", tone: .neutral)
+                }
                 if isMemorizing {
-                    Image(systemName: "brain.head.profile")
-                        .foregroundStyle(.tint)
+                    Image(systemName: "graduationcap.fill")
+                        .foregroundStyle(Theme.Palette.teal)
                         .accessibilityLabel("در حال حفظ")
                 }
                 if isFavorite {
                     Image(systemName: "heart.fill")
-                        .foregroundStyle(.pink)
+                        .foregroundStyle(Theme.Palette.rose)
                         .accessibilityLabel("علاقه‌مندی")
                 }
             }
             .font(.footnote)
             .padding(.vertical, Theme.Spacing.xs)
         }
+        .listRowBackground(Theme.Palette.card)
     }
 }
 
@@ -48,6 +53,7 @@ struct PoemRow: View {
                 PoemRow(summary: PoemSummary(id: 2131, categoryId: 24, title: "غزل شمارهٔ ۲", urlSlug: "sh2"),
                         poetId: 2)
             }
+            .azList()
             .libraryDestinations()
         }
     }

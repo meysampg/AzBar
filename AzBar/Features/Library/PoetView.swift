@@ -7,44 +7,81 @@ struct PoetView: View {
     @Environment(\.contentRepository) private var content
     @Environment(ProgressStore.self) private var progress
     @State private var phase: LibraryLoadPhase<PoemCategory> = .loading
+    @State private var poet: Poet?
+    @State private var isDescriptionExpanded = false
 
-    private var title: String { content.catalog.entry(poetId)?.name ?? "" }
+    private var entry: PoetCatalogEntry? { content.catalog.entry(poetId) }
+    private var title: String { entry?.name ?? "" }
 
     var body: some View {
         Group {
             switch phase {
             case .loading:
-                ProgressView()
-                    .controlSize(.large)
+                AzLoadingView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             case .failed:
                 LibraryErrorView { Task { await load() } }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             case .loaded(let category):
                 list(category)
             }
         }
+        .azScreenBackground()
         .navigationTitle(title)
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
+    }
+
+    private var lifespan: String? {
+        guard let birth = entry?.birthYearHijri, let death = entry?.deathYearHijri else { return nil }
+        return "\(birth.fa)–\(death.fa) ق"
+    }
+
+    private var header: some View {
+        HStack(alignment: .top, spacing: Theme.Spacing.l) {
+            PoetMonogram(name: entry?.name ?? "", size: 64)
+            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+                Text(verbatim: entry?.fullName ?? title)
+                    .font(.azTitle)
+                    .foregroundStyle(Theme.Palette.ink)
+                    .accessibilityAddTraits(.isHeader)
+                if let lifespan {
+                    Text(verbatim: lifespan)
+                        .font(.azMeta)
+                        .foregroundStyle(Theme.Palette.inkSecondary)
+                }
+                if let description = poet?.description, !description.isEmpty {
+                    Text(verbatim: description)
+                        .font(.azMeta)
+                        .foregroundStyle(Theme.Palette.inkSecondary)
+                        .lineLimit(isDescriptionExpanded ? nil : 3)
+                    Button(isDescriptionExpanded ? "کمتر" : "بیشتر") {
+                        withAnimation(.smooth(duration: 0.25)) { isDescriptionExpanded.toggle() }
+                    }
+                    .font(.azCaption)
+                    .foregroundStyle(Theme.Palette.teal)
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, Theme.Spacing.s)
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
     }
 
     private func list(_ category: PoemCategory) -> some View {
         let favorites = Set(progress.favorites().map(\.poemId))
         let planned = Set(progress.activePlans().map(\.poemId))
         return List {
+            Section { header }
             if !category.children.isEmpty {
                 Section {
                     ForEach(category.children) { child in
-                        NavigationLink(value: LibraryRoute.category(child.id, poetId: poetId)) {
-                            Label {
-                                Text(verbatim: child.title).font(.app(.body, weight: .medium))
-                            } icon: {
-                                Image(systemName: "folder")
-                            }
-                        }
+                        CategoryChildRow(child: child, poetId: poetId)
                     }
                 } header: {
-                    Text("بخش‌ها").font(.app(.footnote, weight: .medium))
+                    AzListHeader("بخش‌ها")
                 }
             }
             if !category.poems.isEmpty {
@@ -55,13 +92,15 @@ struct PoetView: View {
                                 isMemorizing: planned.contains(summary.id))
                     }
                 } header: {
-                    Text("اشعار").font(.app(.footnote, weight: .medium))
+                    AzListHeader("اشعار")
                 }
             }
         }
+        .azList()
+        .listRowSeparatorTint(Theme.Palette.hairline)
         .overlay {
             if category.children.isEmpty && category.poems.isEmpty {
-                ContentUnavailableView("شعری یافت نشد", systemImage: "text.book.closed")
+                AzEmptyState("text.book.closed", "شعری یافت نشد")
             }
         }
     }
@@ -72,7 +111,9 @@ struct PoetView: View {
             phase = .loaded(try await content.rootCategory(poetId: poetId))
         } catch {
             if !Task.isCancelled { phase = .failed }
+            return
         }
+        poet = try? await content.poet(poetId)
     }
 }
 

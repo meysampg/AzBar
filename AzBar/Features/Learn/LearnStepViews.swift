@@ -13,13 +13,12 @@ struct LearnStepBody: View {
         VStack(spacing: Theme.Spacing.xl) {
             Text(model.heading)
                 .font(.app(.title3))
+                .foregroundStyle(Theme.Palette.ink)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity)
                 .accessibilityAddTraits(.isHeader)
             if model.isRetry {
-                Label("مرور دوباره", systemImage: "arrow.counterclockwise")
-                    .font(.app(.footnote, weight: .medium))
-                    .foregroundStyle(.secondary)
+                AzChip("مرور دوباره", systemImage: "arrow.counterclockwise", tone: .neutral)
             }
             if let couplet = model.couplet {
                 stepContent(for: couplet)
@@ -27,7 +26,7 @@ struct LearnStepBody: View {
         }
         .padding(.horizontal, Theme.Spacing.l)
         .padding(.vertical, Theme.Spacing.xl)
-        .frame(maxWidth: 640)
+        .frame(maxWidth: Theme.Layout.sessionWidth)
         .frame(maxWidth: .infinity)
         .onChange(of: model.stepKey) { _, _ in showMeaning = false }
     }
@@ -70,8 +69,8 @@ struct LearnStepBody: View {
 
     private func hint(_ text: LocalizedStringKey) -> some View {
         Text(text)
-            .font(.app(.footnote))
-            .foregroundStyle(.secondary)
+            .font(.azMeta)
+            .foregroundStyle(Theme.Palette.inkSecondary)
             .multilineTextAlignment(.center)
     }
 
@@ -83,8 +82,8 @@ struct LearnStepBody: View {
             }
             if showMeaning, let summary = couplet.summary, !summary.isEmpty {
                 Text(verbatim: summary)
-                    .font(.app(.subheadline))
-                    .foregroundStyle(.secondary)
+                    .font(.azMeta)
+                    .foregroundStyle(Theme.Palette.inkSecondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, Theme.Spacing.s)
                     .transition(.opacity)
@@ -96,7 +95,7 @@ struct LearnStepBody: View {
                     } label: {
                         Label("معنی", systemImage: showMeaning ? "text.bubble.fill" : "text.bubble")
                     }
-                    .buttonStyle(.glass)
+                    .buttonStyle(.azPill)
                     .accessibilityHint(showMeaning ? "پنهان کردن معنی" : "نمایش معنی")
                 }
                 if model.hasSyncedRecitation {
@@ -105,10 +104,9 @@ struct LearnStepBody: View {
                     } label: {
                         Label("پخش این بیت", systemImage: "speaker.wave.2")
                     }
-                    .buttonStyle(.glass)
+                    .buttonStyle(.azPill)
                 }
             }
-            .font(.app(.subheadline, weight: .medium))
         }
     }
 
@@ -135,7 +133,7 @@ struct LearnStepBody: View {
                     .accessibilityLabel("بیت پیشین")
             }
             Image(systemName: "arrow.down")
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.Palette.inkTertiary)
                 .accessibilityHidden(true)
             if model.isRevealed {
                 RevealedCoupletCard(couplet: couplet)
@@ -176,12 +174,10 @@ struct LearnBottomBar: View {
         if model.isGradedStep {
             VStack(spacing: Theme.Spacing.s) {
                 Button("بررسی") { animated { model.check() } }
-                    .buttonStyle(.chunky(Theme.Playful.correct))
+                    .buttonStyle(.azPrimary)
                     .disabled(!model.canCheck)
                 Button("نمی‌دانم") { animated { model.check(giveUp: true) } }
-                    .font(.app(.subheadline, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .frame(minHeight: 36)
+                    .buttonStyle(.azTertiary)
             }
         } else if model.awaitsRating {
             RatingBar(previews: model.ratingPreviews(), now: model.previewDate, suggested: model.suggestedRating) { rating in
@@ -191,10 +187,10 @@ struct LearnBottomBar: View {
             Button { animated { model.reveal() } } label: {
                 Label("نمایش پاسخ", systemImage: "eye")
             }
-            .buttonStyle(.chunky(.blue))
+            .buttonStyle(.azSecondary)
         } else {
             Button("ادامه") { animated { model.next() } }
-                .buttonStyle(.chunky(Theme.Playful.correct))
+                .buttonStyle(.azPrimary)
         }
     }
 

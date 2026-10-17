@@ -50,7 +50,7 @@ struct FillBlankView: View {
                             .font(.poem(font, size: 20))
                             .frame(maxWidth: .infinity, minHeight: 28)
                     }
-                    .buttonStyle(ChunkyTileStyle(isSelected: selected == index && !isChecked, state: optionState(index)))
+                    .buttonStyle(AzTileStyle(isSelected: selected == index && !isChecked, state: optionState(index)))
                     .accessibilityAddTraits(selected == index ? .isSelected : [])
                 }
             }
@@ -61,8 +61,8 @@ struct FillBlankView: View {
     private var blankSlot: some View {
         let shown: String? = isChecked ? correctText : selected.map { exercise.options[$0] }
         let tint: Color = {
-            guard let result else { return .secondary }
-            return result.isCorrect ? Theme.Playful.correct : Theme.Playful.wrong
+            guard let result else { return Theme.Palette.teal }
+            return result.isCorrect ? Theme.Palette.success : Theme.Palette.danger
         }()
         return Text(verbatim: correctText)
             .font(.poem(font, size: size))
@@ -73,18 +73,18 @@ struct FillBlankView: View {
                 if let shown {
                     Text(verbatim: shown)
                         .font(.poem(font, size: size))
-                        .foregroundStyle(isChecked ? tint : Color.primary)
+                        .foregroundStyle(isChecked ? tint : Theme.Palette.ink)
                 }
             }
             .background {
                 RoundedRectangle(cornerRadius: size * 0.3, style: .continuous)
-                    .strokeBorder(tint.opacity(0.7), style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
+                    .strokeBorder(tint, style: StrokeStyle(lineWidth: 1.5, dash: [6, 4]))
             }
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(shown.map { "جای خالی: \($0)" } ?? "جای خالی")
     }
 
-    private func optionState(_ index: Int) -> ChunkyTileStyle.TileState {
+    private func optionState(_ index: Int) -> AzTileStyle.TileState {
         guard isChecked else { return .normal }
         if index == exercise.correctOptionIndex { return .correct }
         if index == selected { return .wrong }

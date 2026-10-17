@@ -3,6 +3,7 @@ import SwiftUI
 struct LibraryView: View {
     @Environment(\.contentRepository) private var content
     @State private var query = ""
+    @State private var isSearchPresented = false
 
     var body: some View {
         Group {
@@ -12,8 +13,12 @@ struct LibraryView: View {
                 SearchResultsView(query: query)
             }
         }
+        .azScreenBackground()
         .navigationTitle("کتابخانه")
-        .searchable(text: $query, prompt: "جستجوی شعر یا مصراع")
+        .searchable(text: $query, isPresented: $isSearchPresented, prompt: "جستجوی شعر یا مصراع")
+        .onChange(of: isSearchPresented) { _, presented in
+            if presented { Task { await content.prewarmSearchIndex() } }
+        }
     }
 
     private var poetList: some View {
@@ -22,11 +27,13 @@ struct LibraryView: View {
                 NavigationLink(value: LibraryRoute.poet(entry.id)) {
                     LibraryPoetRow(entry: entry)
                 }
+                .listRowBackground(Theme.Palette.card)
             }
         }
+        .azList()
         .overlay {
             if content.catalog.enabledPoets.isEmpty {
-                ContentUnavailableView("شاعری در دسترس نیست", systemImage: "books.vertical")
+                AzEmptyState("books.vertical", "شاعری در دسترس نیست")
             }
         }
     }
@@ -35,38 +42,38 @@ struct LibraryView: View {
 struct LibraryPoetRow: View {
     let entry: PoetCatalogEntry
 
-    private var isOffline: Bool { entry.bundledPack != nil }
-
     private var lifespan: String? {
         guard let birth = entry.birthYearHijri, let death = entry.deathYearHijri else { return nil }
-        return "\(birth.fa) – \(death.fa) ق"
+        return "\(entry.fullName) · \(birth.fa)–\(death.fa) ق"
     }
 
     var body: some View {
         HStack(alignment: .center, spacing: Theme.Spacing.m) {
-            VStack(alignment: .leading, spacing: Theme.Spacing.xs) {
+            PoetMonogram(name: entry.name, size: 44)
+            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
                 Text(verbatim: entry.name)
-                    .font(.app(.headline))
-                Text(verbatim: entry.fullName)
-                    .font(.app(.subheadline))
-                    .foregroundStyle(.secondary)
-                if let lifespan {
-                    Text(verbatim: lifespan)
-                        .font(.app(.caption))
-                        .foregroundStyle(.tertiary)
-                }
+                    .font(.azHeadline)
+                    .foregroundStyle(Theme.Palette.ink)
+                Text(verbatim: lifespan ?? entry.fullName)
+                    .font(.azMeta)
+                    .foregroundStyle(Theme.Palette.inkSecondary)
             }
             Spacer(minLength: Theme.Spacing.s)
-            Label(isOffline ? "آفلاین" : "آنلاین",
-                  systemImage: isOffline ? "arrow.down.circle" : "icloud")
-                .font(.app(.caption))
-                .foregroundStyle(isOffline ? Color.accentColor : Color.secondary)
-                .padding(.horizontal, Theme.Spacing.s)
-                .padding(.vertical, Theme.Spacing.xs)
-                .background(.quaternary.opacity(0.5), in: .capsule)
+            availabilityChip
         }
         .padding(.vertical, Theme.Spacing.xs)
         .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder private var availabilityChip: some View {
+        if entry.isFullyBundled {
+            AzChip("آفلاین", systemImage: "arrow.down.circle.fill", tone: .teal)
+        } else if entry.isPartiallyBundled {
+            AzChip("گزیدهٔ آفلاین", systemImage: "arrow.down.circle", tone: .gold)
+                .accessibilityLabel("بخشی از اشعار بدون اینترنت در دسترس است")
+        } else {
+            AzChip("آنلاین", systemImage: "icloud", tone: .neutral)
+        }
     }
 }
 

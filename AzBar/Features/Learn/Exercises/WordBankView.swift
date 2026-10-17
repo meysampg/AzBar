@@ -29,15 +29,15 @@ struct WordBankView: View {
         ZStack(alignment: .top) {
             VStack(spacing: 0) {
                 Color.clear.frame(height: 46)
-                Capsule().fill(.quaternary).frame(height: 2)
+                Capsule().fill(Theme.Palette.hairline).frame(height: 2)
                 Color.clear.frame(height: 50)
-                Capsule().fill(.quaternary).frame(height: 2)
+                Capsule().fill(Theme.Palette.hairline).frame(height: 2)
             }
             FlowLayout(horizontalSpacing: Theme.Spacing.s, verticalSpacing: Theme.Spacing.s, rowAlignment: .leading) {
                 ForEach(Array(chosen.enumerated()), id: \.element) { position, id in
                     if let tile = tiles[id] {
                         Button { remove(id) } label: { label(tile) }
-                            .buttonStyle(ChunkyTileStyle(state: answerState(position)))
+                            .buttonStyle(AzTileStyle(state: answerState(position)))
                             .matchedGeometryEffect(id: id, in: namespace)
                             .accessibilityHint(isChecked ? "" : "برای بازگرداندن ضربه بزنید")
                     }
@@ -55,12 +55,12 @@ struct WordBankView: View {
             ForEach(exercise.bank) { tile in
                 if chosen.contains(tile.id) {
                     Button {} label: { label(tile).opacity(0) }
-                        .buttonStyle(ChunkyTileStyle(state: .placeholder))
+                        .buttonStyle(AzTileStyle(state: .placeholder))
                         .disabled(true)
                         .accessibilityHidden(true)
                 } else {
                     Button { add(tile.id) } label: { label(tile) }
-                        .buttonStyle(ChunkyTileStyle())
+                        .buttonStyle(AzTileStyle())
                         .matchedGeometryEffect(id: tile.id, in: namespace)
                         .accessibilityHint(isChecked ? "" : "برای افزودن به پاسخ ضربه بزنید")
                 }
@@ -75,7 +75,7 @@ struct WordBankView: View {
             .frame(minHeight: 28)
     }
 
-    private func answerState(_ position: Int) -> ChunkyTileStyle.TileState {
+    private func answerState(_ position: Int) -> AzTileStyle.TileState {
         guard let result else { return .normal }
         return result.wrongPositions.contains(position) ? .wrong : .correct
     }

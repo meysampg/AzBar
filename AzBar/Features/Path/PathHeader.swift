@@ -11,29 +11,34 @@ struct PathHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.s) {
             Text(verbatim: title)
-                .font(.app(.title2))
+                .font(.azTitle)
+                .foregroundStyle(Theme.Palette.ink)
                 .accessibilityAddTraits(.isHeader)
             Text("\(poetName) · \(totalCouplets.fa) بیت")
-                .font(.app(.subheadline))
-                .foregroundStyle(.secondary)
-            LessonProgressBar(value: totalCouplets > 0 ? Double(learned) / Double(totalCouplets) : 0)
+                .font(.azMeta)
+                .foregroundStyle(Theme.Palette.inkSecondary)
+            AzProgressBar(value: totalCouplets > 0 ? Double(learned) / Double(totalCouplets) : 0,
+                          label: "پیشرفت شعر")
                 .padding(.top, Theme.Spacing.xs)
             HStack {
                 Text("\(learned.fa) از \(totalCouplets.fa) بیت آموخته شد")
                 Spacer(minLength: Theme.Spacing.s)
-                Label("\(crowns.fa) تاج", systemImage: "crown.fill")
-                    .foregroundStyle(Theme.Playful.gold)
+                if crowns > 0 {
+                    Label("\(crowns.fa) تاج", systemImage: "crown.fill")
+                        .foregroundStyle(Theme.Palette.goldDeep)
+                }
             }
-            .font(.app(.caption))
-            .foregroundStyle(.secondary)
+            .font(.azCaption)
+            .foregroundStyle(Theme.Palette.inkSecondary)
         }
-        .padding(Theme.Spacing.l)
-        .background(.background.secondary, in: .rect(cornerRadius: Theme.Radius.card))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .azCard()
     }
 }
 
 #Preview {
     PathHeader(title: "غزل شمارهٔ ۱", poetName: "حافظ", totalCouplets: 7, learned: 3, crowns: 1)
         .padding()
+        .azScreenBackground()
         .persianRoot()
 }

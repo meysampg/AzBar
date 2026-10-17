@@ -19,17 +19,18 @@ struct CategoryView: View {
         Group {
             switch phase {
             case .loading:
-                ProgressView()
-                    .controlSize(.large)
+                AzLoadingView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             case .failed:
                 LibraryErrorView { Task { await load() } }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             case .loaded(let category):
                 list(category)
             }
         }
+        .azScreenBackground()
         .navigationTitle(loadedTitle ?? "")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $searchText,
                     prompt: loadedTitle.map { "جستجو در \($0)" } ?? "جستجو")
         .task { await load() }
@@ -53,16 +54,10 @@ struct CategoryView: View {
             if !category.children.isEmpty && !isSearching {
                 Section {
                     ForEach(category.children) { child in
-                        NavigationLink(value: LibraryRoute.category(child.id, poetId: poetId)) {
-                            Label {
-                                Text(verbatim: child.title).font(.app(.body, weight: .medium))
-                            } icon: {
-                                Image(systemName: "folder")
-                            }
-                        }
+                        CategoryChildRow(child: child, poetId: poetId)
                     }
                 } header: {
-                    Text("بخش‌ها").font(.app(.footnote, weight: .medium))
+                    AzListHeader("بخش‌ها")
                 }
             }
             if !poems.isEmpty {
@@ -73,17 +68,17 @@ struct CategoryView: View {
                                 isMemorizing: planned.contains(summary.id))
                     }
                 } header: {
-                    Text("اشعار · \(poems.count.fa)").font(.app(.footnote, weight: .medium))
+                    AzListHeader("اشعار · \(poems.count.fa)")
                 }
             }
         }
+        .azList()
         .overlay {
             if poems.isEmpty && (isSearching || category.children.isEmpty) {
                 if isSearching {
-                    ContentUnavailableView("نتیجه‌ای یافت نشد", systemImage: "magnifyingglass",
-                                           description: Text("عبارت دیگری را امتحان کنید."))
+                    AzEmptyState("magnifyingglass", "نتیجه‌ای یافت نشد", "عبارت دیگری را امتحان کنید.")
                 } else {
-                    ContentUnavailableView("شعری یافت نشد", systemImage: "text.book.closed")
+                    AzEmptyState("text.book.closed", "شعری یافت نشد")
                 }
             }
         }

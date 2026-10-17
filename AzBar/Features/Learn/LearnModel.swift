@@ -5,6 +5,8 @@ final class LearnModel {
     enum Phase {
         case loading
         case failed
+        /// The poem has no memorizable couplets (prose); no plan is created.
+        case unavailable
         case session
         case summary
     }
@@ -61,6 +63,10 @@ final class LearnModel {
         do {
             let poem = try await content.poem(request.poemId, poetId: request.poetId)
             self.poem = poem
+            guard !poem.memorizableCouplets.isEmpty else {
+                phase = .unavailable
+                return
+            }
             if progress.plan(poemId: poem.id) == nil {
                 progress.addPlan(poem: poem, poetName: content.catalog.entry(poem.poetId)?.name ?? "")
             }
@@ -193,7 +199,7 @@ final class LearnModel {
         switch kind {
         case .lesson: "بیت \(positionInBatch.fa) از \(batchCount.fa)"
         case .practice: "تمرین"
-        case .challenge: "آزمون کل غزل"
+        case .challenge: "آزمون پایانی"
         }
     }
     var isRevealed: Bool { engine?.isRevealed ?? false }

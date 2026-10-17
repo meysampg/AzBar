@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The learning path of one poem (Duolingo-style winding node list).
+/// The learning path of one poem: header, one continuous curve through medallion nodes, completion card.
 struct PoemPathView: View {
     let poemId: PoemID
     let poetId: PoetID
@@ -10,22 +10,32 @@ struct PoemPathView: View {
     @Environment(GamificationStore.self) private var gamification
     @Environment(\.contentRepository) private var content
 
-    @State private var phase: LibraryLoadPhase<Poem> = .loading
-    @State private var width: CGFloat = 360
+    private enum Phase {
+        case loading, failed
+        case loaded(Poem)
+    }
 
-    private static let zig: [CGFloat] = [0, 0.66, 1, 0.66, 0, -0.66, -1, -0.66]
+    @State private var phase: Phase = .loading
 
     var body: some View {
         Group {
             switch phase {
             case .loading:
-                ProgressView().controlSize(.large).frame(maxWidth: .infinity, maxHeight: .infinity)
+                AzLoadingView().frame(maxWidth: .infinity, maxHeight: .infinity)
             case .failed:
-                LibraryErrorView { Task { await load() } }
+                AzErrorView { Task { await load() } }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             case .loaded(let poem):
-                pathContent(poem)
+                if poem.memorizableCouplets.isEmpty {
+                    AzEmptyState("text.alignright", "این متن بیتی برای حفظ ندارد",
+                                 "متن‌های نثر را می‌توان خواند، اما مسیر حفظ ندارند.")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else {
+                    pathContent(poem)
+                }
             }
         }
+        .azScreenBackground()
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -62,50 +72,47 @@ struct PoemPathView: View {
         let learned = memorizable.filter(started.contains).count
         let crowns = nodes.filter { $0.state == .mastered }.count
         let current = LearningPath.currentNode(in: nodes)
-        let challengeDone = nodes.last.map { $0.kind == .challenge && $0.state >= .completed } ?? false
-        let amp = min(90, width * 0.22)
+        let lessonsDone = nodes.filter { $0.kind == .lesson }.allSatisfy { $0.state >= .completed }
+        let challengeOK = nodes.last(where: { $0.kind == .challenge }).map { $0.state >= .completed } ?? true
+        let poemComplete = !nodes.isEmpty && lessonsDone && challengeOK
         let poetName = progress.plan(poemId: poemId)?.poetName ?? content.catalog.entry(poetId)?.name ?? ""
+
+        var ranges: [String: ClosedRange<Int>] = [:]
+        for node in nodes where node.kind == .lesson {
+            if let a = node.coupletIndices.first.flatMap({ position[$0] }),
+               let b = node.coupletIndices.last.flatMap({ position[$0] }), a <= b {
+                ranges[node.id] = a...b
+            }
+        }
+        let partial = current.flatMap { $0.coupletIndices.contains(where: started.contains) ? $0.id : nil }
 
         return ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 28) {
+                VStack(spacing: 20) {
                     PathHeader(title: poem.title, poetName: poetName, totalCouplets: memorizable.count,
                                learned: learned, crowns: crowns)
-                        .padding(.bottom, Theme.Spacing.s)
-                    ForEach(Array(nodes.enumerated()), id: \.element.id) { i, node in
-                        PathNodeView(
-                            node: node,
-                            beytRange: range(of: node, position: position),
-                            isPartial: node.state == .current && node.coupletIndices.contains(where: started.contains),
-                            onStart: { mode in appModel.startLearning(poemId: poemId, poetId: poetId, mode: mode) }
-                        )
-                        .offset(x: Self.zig[i % Self.zig.count] * amp)
-                        .id(node.id)
+                        .padding(.horizontal, Theme.Layout.margin)
+                    PathMapView(nodes: nodes, beytRanges: ranges, partialNodeId: partial) { mode in
+                        appModel.startLearning(poemId: poemId, poetId: poetId, mode: mode)
                     }
-                    if challengeDone {
-                        Label("این غزل را کامل از بر کردید!", systemImage: "party.popper.fill")
-                            .font(.app(.headline))
-                            .foregroundStyle(Theme.Playful.gold)
+                    if poemComplete {
+                        Label("این شعر را کامل از بر کردید!", systemImage: "party.popper.fill")
+                            .font(.azHeadline)
+                            .foregroundStyle(Theme.Palette.goldDeep)
                             .multilineTextAlignment(.center)
-                            .padding(.top, Theme.Spacing.l)
+                            .frame(maxWidth: .infinity)
+                            .azCard(fill: Theme.Palette.goldSoft)
+                            .padding(.horizontal, Theme.Layout.margin)
                     }
                 }
-                .padding(.horizontal, Theme.Spacing.l)
+                .frame(maxWidth: Theme.Layout.readableWidth)
+                .frame(maxWidth: .infinity)
                 .padding(.vertical, Theme.Spacing.l)
             }
             .onAppear {
                 if let current { proxy.scrollTo(current.id, anchor: .center) }
             }
         }
-        .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
-        .background(Color(.systemGroupedBackground))
-    }
-
-    private func range(of node: PathNode, position: [Int: Int]) -> ClosedRange<Int>? {
-        guard node.kind == .lesson,
-              let a = node.coupletIndices.first.flatMap({ position[$0] }),
-              let b = node.coupletIndices.last.flatMap({ position[$0] }), a <= b else { return nil }
-        return a...b
     }
 }
 

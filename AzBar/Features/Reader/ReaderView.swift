@@ -31,15 +31,16 @@ struct ReaderView: View {
         Group {
             switch model.phase {
             case .loading:
-                ProgressView()
-                    .controlSize(.large)
+                AzLoadingView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             case .failed:
                 LibraryErrorView { Task { await load() } }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             case .loaded:
                 if let poem = model.poem { content(for: poem) }
             }
         }
+        .azScreenBackground()
         .navigationTitle(model.poem?.title ?? "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
@@ -65,15 +66,15 @@ struct ReaderView: View {
 
         return ScrollViewReader { proxy in
             ScrollView {
-                LazyVStack(spacing: 22) {
+                LazyVStack(spacing: Theme.Spacing.xl - 4) {
                     ReaderHeaderView(poem: poem, poetName: model.poetName)
                     ForEach(poem.couplets) { couplet in
                         coupletRow(couplet, in: poem, isMemorized: memorized.contains(couplet.index), transform: transform)
                             .id(couplet.index)
                     }
                     Text("منبع: گنجور")
-                        .font(.app(.footnote))
-                        .foregroundStyle(.tertiary)
+                        .font(.azCaption)
+                        .foregroundStyle(Theme.Palette.inkTertiary)
                         .padding(.top, Theme.Spacing.s)
                 }
                 .padding(.horizontal, Theme.Spacing.l)
@@ -102,7 +103,8 @@ struct ReaderView: View {
                 poem: poem,
                 model: model,
                 isCollapsed: isBarCollapsed,
-                hasPlan: progress.plan(poemId: poem.id) != nil
+                hasPlan: progress.plan(poemId: poem.id) != nil,
+                canMemorize: !poem.memorizableCouplets.isEmpty
             ) {
                 memorize(poem)
             }
@@ -117,7 +119,7 @@ struct ReaderView: View {
                 if isMemorized {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.footnote)
-                        .foregroundStyle(.green)
+                        .foregroundStyle(Theme.Palette.teal)
                         .padding(Theme.Spacing.s)
                         .accessibilityLabel("حفظ‌شده")
                 }
@@ -208,6 +210,7 @@ private struct ReaderBottomBar: View {
     let model: ReaderModel
     let isCollapsed: Bool
     let hasPlan: Bool
+    let canMemorize: Bool
     let onMemorize: () -> Void
 
     @Environment(AudioPlayerService.self) private var audio
@@ -216,42 +219,44 @@ private struct ReaderBottomBar: View {
     private var isThisPoem: Bool { audio.poemId == poem.id }
 
     var body: some View {
-        GlassEffectContainer(spacing: Theme.Spacing.m) {
-            HStack(spacing: Theme.Spacing.m) {
-                if hasAudio {
-                    PlayerBar(
-                        isPlaying: isThisPoem && audio.isPlaying,
-                        isLoading: isThisPoem && audio.status == .loading,
-                        currentTime: isThisPoem ? audio.currentTime : 0,
-                        duration: isThisPoem ? audio.duration : 0,
-                        recitations: poem.recitations,
-                        selectedRecitationId: model.selectedRecitation?.id,
-                        isCollapsed: isCollapsed,
-                        onToggle: { Task { await model.togglePlayback(audio: audio) } },
-                        onSkipBack: { audio.skip(by: -10) },
-                        onSelect: { r in Task { await model.select(r, audio: audio) } }
-                    )
-                }
-                if isCollapsed && hasAudio {
-                    Spacer(minLength: 0)
-                } else {
-                    Button(action: onMemorize) {
-                        Text(hasPlan ? "ادامهٔ حفظ" : "حفظ کن")
-                            .font(.app(.headline))
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
-                            .padding(.horizontal, Theme.Spacing.s)
+        if hasAudio || canMemorize {
+            GlassEffectContainer(spacing: Theme.Spacing.m) {
+                HStack(spacing: Theme.Spacing.m) {
+                    if hasAudio {
+                        PlayerBar(
+                            isPlaying: isThisPoem && audio.isPlaying,
+                            isLoading: isThisPoem && audio.status == .loading,
+                            currentTime: isThisPoem ? audio.currentTime : 0,
+                            duration: isThisPoem ? audio.duration : 0,
+                            recitations: poem.recitations,
+                            selectedRecitationId: model.selectedRecitation?.id,
+                            isCollapsed: isCollapsed,
+                            onToggle: { Task { await model.togglePlayback(audio: audio) } },
+                            onSkipBack: { audio.skip(by: -10) },
+                            onSelect: { r in Task { await model.select(r, audio: audio) } }
+                        )
                     }
-                    .buttonStyle(.glassProminent)
-                    .controlSize(.large)
-                    .frame(maxWidth: hasAudio ? nil : .infinity)
+                    if canMemorize {
+                        if isCollapsed && hasAudio {
+                            Spacer(minLength: 0)
+                        } else {
+                            Button(action: onMemorize) {
+                                Text(hasPlan ? "ادامهٔ حفظ" : "حفظ کن")
+                                    .lineLimit(1)
+                                    .minimumScaleFactor(0.8)
+                            }
+                            .buttonStyle(.azPrimary(compact: true))
+                            .azShadow(Theme.Shadow.elevated)
+                            .frame(maxWidth: hasAudio ? nil : .infinity)
+                        }
+                    }
                 }
             }
+            .padding(.horizontal, Theme.Spacing.l)
+            .padding(.bottom, Theme.Spacing.s)
+            .animation(.smooth, value: isCollapsed)
+            .sensoryFeedback(.impact(weight: .light), trigger: hasPlan)
         }
-        .padding(.horizontal, Theme.Spacing.l)
-        .padding(.bottom, Theme.Spacing.s)
-        .animation(.smooth, value: isCollapsed)
-        .sensoryFeedback(.impact(weight: .light), trigger: hasPlan)
     }
 }
 

@@ -262,11 +262,12 @@ final class ProgressStore {
         return (try? context.fetchCount(FetchDescriptor<ReviewLogEntry>(predicate: #Predicate { !$0.isLearning }))) ?? 0
     }
 
-    /// Plans whose memorizable couplets all have a card.
+    /// Plans whose memorizable couplets all have a card. Single-beyt poems do not count
+    /// (they could otherwise farm the first-ghazal / ten-ghazals badges).
     func completedPoemCount() -> Int {
         _ = revision
         var count = 0
-        for plan in fetch(FetchDescriptor<MemorizationPlan>()) where plan.memorizableCount > 0 {
+        for plan in fetch(FetchDescriptor<MemorizationPlan>()) where plan.memorizableCount >= 2 {
             let pid = plan.poemId
             let cards = (try? context.fetchCount(FetchDescriptor<CoupletCard>(predicate: #Predicate { $0.poemId == pid }))) ?? 0
             if cards >= plan.memorizableCount { count += 1 }

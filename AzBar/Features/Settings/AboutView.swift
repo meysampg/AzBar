@@ -12,14 +12,15 @@ struct AboutView: View {
         Form {
             Section {
                 VStack(spacing: Theme.Spacing.s) {
-                    Image(systemName: "text.book.closed.fill")
-                        .font(.system(size: 52))
-                        .foregroundStyle(.tint)
-                        .accessibilityHidden(true)
-                    Text("ازبر").font(.app(.title))
-                    Text("حفظ شعر فارسی، آغاز با حافظ")
-                        .font(.app(.subheadline))
-                        .foregroundStyle(.secondary)
+                    Text("ازبر")
+                        .font(.azDisplay)
+                        .foregroundStyle(Theme.Palette.teal)
+                    Text("حفظ شعر فارسی: حافظ، سعدی، خیام، صائب")
+                        .font(.azMeta)
+                        .foregroundStyle(Theme.Palette.inkSecondary)
+                    Text(verbatim: versionText)
+                        .font(.azCaption)
+                        .foregroundStyle(Theme.Palette.inkSecondary)
                 }
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, Theme.Spacing.m)
@@ -35,7 +36,7 @@ struct AboutView: View {
                     }
                 }
             } header: {
-                Text("منبع شعرها").font(.app(.footnote))
+                AzListHeader("منبع شعرها")
             }
 
             Section {
@@ -58,13 +59,13 @@ struct AboutView: View {
                     Text(verbatim: "MIT")
                 }
             } header: {
-                Text("متن‌باز").font(.app(.footnote))
+                AzListHeader("متن‌باز")
             }
 
             Section {
                 Text("وزیرمتن، نوتو نسخ عربی، نوتو نستعلیق اردو — SIL OFL 1.1")
             } header: {
-                Text("قلم‌ها").font(.app(.footnote))
+                AzListHeader("قلم‌ها")
             }
 
             Section {
@@ -73,8 +74,13 @@ struct AboutView: View {
                 }
             } footer: {
                 Text(verbatim: "© 2026 Meysam Pourganji")
+                    .font(.azCaption)
+                    .foregroundStyle(Theme.Palette.inkSecondary)
             }
         }
+        .azList()
+        .foregroundStyle(Theme.Palette.ink)
+        .tint(Theme.Palette.teal)
         .navigationTitle("دربارهٔ ازبر")
         .navigationBarTitleDisplayMode(.inline)
     }

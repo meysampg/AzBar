@@ -211,4 +211,15 @@ struct GamificationStoreTests {
         nodes = env.store.path(for: poem)
         #expect((nodes.first { $0.id == "R3" }?.state ?? .locked) >= .completed)
     }
+
+    @Test func singleBeytPoemDoesNotCountAsCompleted() throws {
+        let env = try makeEnv()
+        func v(_ i: Int, _ pos: Int) -> Verse { Verse(id: 9000 + i, order: i, position: pos, text: "مصراع \(i)") }
+        let poem = Poem(id: 900, poetId: 2, categoryId: 24, title: "رباعی", fullTitle: "رباعی", urlSlug: "r", fullUrl: "/r",
+                        couplets: [Couplet(index: 0, kind: .beyt, verses: [v(1, 0), v(2, 1)])])
+        env.progress.addPlan(poem: poem, poetName: "خیام")
+        env.progress.record(.good, key: CoupletKey(poemId: 900, coupletIndex: 0), poetId: 2,
+                            isLearning: true, scheduler: scheduler)
+        #expect(env.progress.completedPoemCount() == 0)
+    }
 }
