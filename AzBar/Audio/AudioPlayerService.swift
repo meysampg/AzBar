@@ -280,32 +280,32 @@ final class AudioPlayerService {
         remoteCommandsConfigured = true
         let center = MPRemoteCommandCenter.shared()
         center.playCommand.addTarget { [weak self] _ in
-            MainActor.assumeIsolated { self?.play() }
+            Task { @MainActor in self?.play() }
             return .success
         }
         center.pauseCommand.addTarget { [weak self] _ in
-            MainActor.assumeIsolated { self?.pause() }
+            Task { @MainActor in self?.pause() }
             return .success
         }
         center.togglePlayPauseCommand.addTarget { [weak self] _ in
-            MainActor.assumeIsolated { self?.toggle() }
+            Task { @MainActor in self?.toggle() }
             return .success
         }
         center.skipForwardCommand.preferredIntervals = [10]
         center.skipForwardCommand.addTarget { [weak self] _ in
-            MainActor.assumeIsolated { self?.skip(by: 10) }
+            Task { @MainActor in self?.skip(by: 10) }
             return .success
         }
         center.skipBackwardCommand.preferredIntervals = [10]
         center.skipBackwardCommand.addTarget { [weak self] _ in
-            MainActor.assumeIsolated { self?.skip(by: -10) }
+            Task { @MainActor in self?.skip(by: -10) }
             return .success
         }
         center.changePlaybackPositionCommand.addTarget { [weak self] event in
             guard let position = (event as? MPChangePlaybackPositionCommandEvent)?.positionTime else {
                 return .commandFailed
             }
-            MainActor.assumeIsolated { self?.seek(to: position) }
+            Task { @MainActor in self?.seek(to: position) }
             return .success
         }
     }

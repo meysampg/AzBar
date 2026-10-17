@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import os
 
 @MainActor @Observable
 final class AppModel {
@@ -32,6 +33,10 @@ final class AppModel {
                 migrationPlan: AzBarMigrationPlan.self
             )
         } catch {
+            Logger(subsystem: "com.meysam.azbar", category: "persistence").error("On-disk ModelContainer failed: \(String(describing: error))")
+            #if DEBUG
+            assertionFailure("On-disk ModelContainer failed: \(error)")
+            #endif
             container = Self.inMemoryContainer()
         }
         return AppModel(container: container, content: .live(bundle: .main), settings: AppSettings())

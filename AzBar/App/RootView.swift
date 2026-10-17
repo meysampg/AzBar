@@ -31,7 +31,7 @@ struct RootView: View {
                     ReviewHomeView()
                 }
             }
-            .badge(dueCount)
+            .badge(dueCount > 0 ? Text(dueCount.fa) : nil)
             Tab("تنظیمات", systemImage: "gearshape", value: AppTab.settings) {
                 NavigationStack {
                     SettingsView()
@@ -39,15 +39,13 @@ struct RootView: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
-        .fullScreenCover(item: $model.learnRequest) { request in
-            LearnView(request: request)
-        }
-        .fullScreenCover(isPresented: $model.isReviewPresented) {
-            ReviewSessionView()
-        }
-        .sheet(isPresented: $model.isFalPresented) {
-            FalView()
-                .presentationDetents([.large])
+        .background { Color.clear.fullScreenCover(item: $model.learnRequest) { request in LearnView(request: request) } }
+        .background { Color.clear.fullScreenCover(isPresented: $model.isReviewPresented) { ReviewSessionView() } }
+        .background {
+            Color.clear.sheet(isPresented: $model.isFalPresented) {
+                FalView()
+                    .presentationDetents([.large])
+            }
         }
         .onChange(of: scenePhase) { _, phase in
             guard phase == .background else { return }
