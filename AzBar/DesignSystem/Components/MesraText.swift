@@ -18,5 +18,5 @@ struct MesraText: View {
 
 #Preview {
     MesraText(text: "اَلا یا اَیُّهَا السّاقی اَدِرْ کَأساً و ناوِلْها", font: .naskh, size: 22)
-        .environment(\.layoutDirection, .rightToLeft)
+        .persianRoot()
 }

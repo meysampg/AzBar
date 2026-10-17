@@ -8,7 +8,7 @@ import ImageIO
 import UniformTypeIdentifiers
 
 let size = 1024
-let text = "از بر"
+let text = "ازبر"
 let fontURL = URL(fileURLWithPath: "AzBar/Resources/Fonts/NotoNastaliqUrdu-Regular.ttf")
 let outDir = "AzBar/Resources/Assets.xcassets/AppIcon.appiconset"
 

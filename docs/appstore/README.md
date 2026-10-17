@@ -1,6 +1,6 @@
 # App Store materials
 
-Everything needed to fill in the App Store Connect record for AzBar «از بر». Nothing here is shipped in the app.
+Everything needed to fill in the App Store Connect record for AzBar «ازبر». Nothing here is shipped in the app.
 
 | File | Purpose |
 |---|---|

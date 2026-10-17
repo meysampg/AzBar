@@ -76,5 +76,5 @@ struct HoldToConfirmButton: View {
 #Preview {
     HoldToConfirmButton("نیت کردم") {}
         .padding(40)
-        .environment(\.layoutDirection, .rightToLeft)
+        .persianRoot()
 }

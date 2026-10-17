@@ -3,14 +3,64 @@ import SwiftUI
 struct ReviewSummaryView: View {
     let counts: [Rating: Int]
     let streak: Int
+    var xp: Int = 0
+    var reward: SessionReward?
     let onDone: () -> Void
 
+    @Environment(AppModel.self) private var app
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var appeared = false
+    @State private var confetti = 0
+    @State private var isCelebrating = false
+    @State private var celebrationsDone = false
+
+    private var celebrations: [Celebration] { reward?.celebrations ?? [] }
+    private var needsCelebration: Bool { !celebrations.isEmpty && !celebrationsDone }
 
     private var total: Int { counts.values.reduce(0, +) }
 
     var body: some View {
+        ZStack {
+            summary
+            ConfettiView(trigger: confetti)
+                .ignoresSafeArea()
+            if isCelebrating {
+                CelebrationSequenceView(celebrations: celebrations) {
+                    withAnimation(reduceMotion ? nil : .smooth) {
+                        celebrationsDone = true
+                        isCelebrating = false
+                    }
+                    onDone()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(.systemBackground))
+                .transition(.opacity)
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if !isCelebrating {
+                SessionActionBar {
+                    if needsCelebration {
+                        Button("ادامه") {
+                            withAnimation(reduceMotion ? nil : .smooth) { isCelebrating = true }
+                        }
+                        .buttonStyle(.chunky(.blue))
+                    } else {
+                        Button("پایان", action: onDone)
+                            .buttonStyle(.chunky(.blue))
+                    }
+                }
+            }
+        }
+        .sensoryFeedback(.success, trigger: appeared)
+        .task {
+            appeared = true
+            confetti += 1
+            app.sounds.play(.lessonComplete)
+        }
+    }
+
+    private var summary: some View {
         ScrollView {
             VStack(spacing: Theme.Spacing.xl) {
                 Image(systemName: "flame.fill")
@@ -26,6 +76,11 @@ struct ReviewSummaryView: View {
                     Text("\(total.fa) بیت مرور شد")
                         .font(.app(.body))
                         .foregroundStyle(.secondary)
+                    HStack(spacing: Theme.Spacing.m) {
+                        StatTile(title: "امتیاز", value: "+\(xp.fa)", systemImage: "bolt.fill", tint: Theme.Playful.xp)
+                        StatTile(title: "مرورشده", value: total.fa, systemImage: "rectangle.stack.fill", tint: .blue)
+                    }
+                    .padding(.top, Theme.Spacing.s)
                     if streak > 0 {
                         Text("\(streak.fa) روز پیاپی")
                             .font(.app(.headline))
@@ -56,16 +111,11 @@ struct ReviewSummaryView: View {
             .frame(maxWidth: .infinity)
         }
         .scrollBounceBehavior(.basedOnSize)
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            SessionActionBar { SessionPrimaryButton(title: "پایان", action: onDone) }
-        }
-        .sensoryFeedback(.success, trigger: appeared)
-        .task { appeared = true }
     }
 }
 
 #Preview {
     PreviewContainer {
-        ReviewSummaryView(counts: [.again: 1, .hard: 2, .good: 6, .easy: 3], streak: 5, onDone: {})
+        ReviewSummaryView(counts: [.again: 1, .hard: 2, .good: 6, .easy: 3], streak: 5, xp: 22, onDone: {})
     }
 }

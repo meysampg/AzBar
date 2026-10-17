@@ -8,12 +8,17 @@ struct ProgressStoreTests {
     let cal = Calendar.current
     let scheduler = FSRSScheduler()
 
-    func makeStore() throws -> ProgressStore {
+    func makeContainer() throws -> ModelContainer {
         let schema = Schema(versionedSchema: AzBarSchemaV2.self)
-        let container = try ModelContainer(for: schema, migrationPlan: AzBarMigrationPlan.self,
-                                           configurations: ModelConfiguration(isStoredInMemoryOnly: true))
-        return ProgressStore(container: container)
+        return try ModelContainer(for: schema, migrationPlan: AzBarMigrationPlan.self,
+                                  configurations: ModelConfiguration(isStoredInMemoryOnly: true))
     }
+
+    func makeStore() throws -> ProgressStore {
+        ProgressStore(container: try makeContainer())
+    }
+
+    func key(_ n: Int) -> String { DayKey(daysAgo(n), calendar: DayKey.gregorian()).string }
 
     func poem(id: Int = 500) -> Poem {
         func v(_ i: Int, _ pos: Int) -> Verse { Verse(id: id * 10 + i, order: i, position: pos, text: "مصراع \(i)") }
@@ -116,5 +121,39 @@ struct ProgressStoreTests {
         let old = try makeStore()
         rec(old, at: daysAgo(2))
         #expect(old.currentStreak() == 0)
+    }
+
+    @Test func frozenDayBridgesStreakWithoutCounting() throws {
+        let container = try makeContainer()
+        let store = ProgressStore(container: container)
+        rec(store, at: daysAgo(3)); rec(store, at: daysAgo(2))
+        container.mainContext.insert(FrozenDay(dayKey: key(1)))
+        try container.mainContext.save()
+        #expect(store.currentStreak() == 2)
+        #expect(store.frozenDays().count == 1)
+        #expect(!store.hasActivity(on: daysAgo(1)))
+    }
+
+    @Test func xpOnlyDayCountsAsActive() throws {
+        let container = try makeContainer()
+        let store = ProgressStore(container: container)
+        container.mainContext.insert(DailyXP(dayKey: key(0), xp: 8))
+        container.mainContext.insert(DailyXP(dayKey: key(1), xp: 0))
+        try container.mainContext.save()
+        #expect(store.currentStreak() == 1)
+        #expect(store.activeDays().count == 1)
+    }
+
+    @Test func gamificationCounts() throws {
+        let store = try makeStore()
+        store.addPlan(poem: poem(), poetName: "حافظ")
+        #expect(store.learnedCoupletCount() == 0 && store.completedPoemCount() == 0)
+        store.record(.good, key: CoupletKey(poemId: 500, coupletIndex: 0), poetId: 2, isLearning: true, scheduler: scheduler)
+        #expect(store.learnedCoupletCount() == 1 && store.completedPoemCount() == 0)
+        store.record(.good, key: CoupletKey(poemId: 500, coupletIndex: 1), poetId: 2, isLearning: false, scheduler: scheduler)
+        #expect(store.completedPoemCount() == 1)
+        #expect(store.reviewCount() == 1)
+        #expect(store.matureCoupletCount() == 0)
+        #expect(store.matureCoupletCount(threshold: 0) == 2)
     }
 }

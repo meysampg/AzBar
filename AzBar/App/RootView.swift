@@ -4,6 +4,7 @@ struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(ProgressStore.self) private var progress
     @Environment(AppSettings.self) private var settings
+    @Environment(GamificationStore.self) private var gamification
     @Environment(\.scenePhase) private var scenePhase
 
     private var dueCount: Int {
@@ -32,6 +33,11 @@ struct RootView: View {
                 }
             }
             .badge(dueCount > 0 ? Text(dueCount.fa) : nil)
+            Tab("پیشرفت", systemImage: "trophy", value: AppTab.progress) {
+                NavigationStack {
+                    ProgressHomeView()
+                }
+            }
             Tab("تنظیمات", systemImage: "gearshape", value: AppTab.settings) {
                 NavigationStack {
                     SettingsView()
@@ -39,15 +45,19 @@ struct RootView: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
-        .background { Color.clear.fullScreenCover(item: $model.learnRequest) { request in LearnView(request: request) } }
-        .background { Color.clear.fullScreenCover(isPresented: $model.isReviewPresented) { ReviewSessionView() } }
+        .background { Color.clear.fullScreenCover(item: $model.learnRequest) { request in LearnView(request: request).persianRoot() } }
+        .background { Color.clear.fullScreenCover(isPresented: $model.isReviewPresented) { ReviewSessionView().persianRoot() } }
         .background {
             Color.clear.sheet(isPresented: $model.isFalPresented) {
                 FalView()
+                    .persianRoot()
                     .presentationDetents([.large])
             }
         }
+        .overlay(alignment: .top) { toastOverlay }
+        .task { gamification.reconcile() }
         .onChange(of: scenePhase) { _, phase in
+            if phase == .active { gamification.reconcile() }
             guard phase == .background else { return }
             Task {
                 await model.reminders.reschedule(
@@ -56,6 +66,30 @@ struct RootView: View {
                     minute: settings.reminderMinute,
                     store: progress
                 )
+            }
+        }
+    }
+}
+
+extension RootView {
+    @ViewBuilder
+    fileprivate var toastOverlay: some View {
+        if let badge = gamification.pendingToasts.first {
+            HStack(spacing: Theme.Spacing.s) {
+                BadgeMedal(badge: badge, unlocked: true, size: 28)
+                Text("دستاورد تازه: \(badge.title)")
+                    .font(.app(.subheadline, weight: .semibold))
+            }
+            .padding(.horizontal, Theme.Spacing.l)
+            .padding(.vertical, Theme.Spacing.s)
+            .glassEffect(.regular, in: .capsule)
+            .padding(.top, Theme.Spacing.s)
+            .transition(.move(edge: .top).combined(with: .opacity))
+            .accessibilityElement(children: .combine)
+            .task(id: badge) {
+                try? await Task.sleep(for: .seconds(3))
+                guard !Task.isCancelled else { return }
+                withAnimation(.smooth) { gamification.dismissToast() }
             }
         }
     }

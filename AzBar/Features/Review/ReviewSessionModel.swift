@@ -16,17 +16,23 @@ final class ReviewSessionModel {
     private(set) var engine: ReviewSessionEngine?
     private(set) var previewDate: Date = .now
     private(set) var streak = 0
+    private(set) var reward: SessionReward?
+    /// XP awarded for ratings during this session.
+    private(set) var sessionXP = 0
 
     private var poems: [PoemID: Poem] = [:]
     private var progress: ProgressStore?
     private var settings: AppSettings?
+    private var gamification: GamificationStore?
     private var didLoad = false
 
-    func load(content: ContentRepository, progress: ProgressStore, settings: AppSettings) async {
+    func load(content: ContentRepository, progress: ProgressStore, settings: AppSettings,
+              gamification: GamificationStore) async {
         guard !didLoad else { return }
         didLoad = true
         self.progress = progress
         self.settings = settings
+        self.gamification = gamification
         let items = progress.dueItems(until: ReviewQueueWindow.endOfToday(), limit: settings.dailyReviewLimit)
         let plans = Dictionary(progress.activePlans().map { ($0.poemId, $0.poetId) }, uniquingKeysWith: { a, _ in a })
         var usable: [ReviewItem] = []
@@ -46,6 +52,7 @@ final class ReviewSessionModel {
         let scheduler = FSRSScheduler(parameters: settings.fsrsParameters)
         engine = ReviewSessionEngine(items: usable, scheduler: scheduler)
         previewDate = .now
+        gamification.beginSession()
         phase = .session
     }
 
@@ -65,6 +72,8 @@ final class ReviewSessionModel {
     var isRevealed: Bool { engine?.isRevealed ?? false }
     var total: Int { engine?.total ?? 0 }
     var counts: [Rating: Int] { engine?.counts ?? [:] }
+    /// Total XP shown on the summary.
+    var totalXP: Int { max(reward?.xpEarned ?? 0, sessionXP) }
     var reviewedCount: Int { counts.values.reduce(0, +) }
 
     var position: Int {
@@ -134,7 +143,10 @@ final class ReviewSessionModel {
         engine?.rate(rating, now: now)
         progress.record(rating, key: item.key, poetId: poetId, isLearning: false,
                         scheduler: FSRSScheduler(parameters: settings.fsrsParameters), now: now)
+        sessionXP += gamification?.award([XPAward(.reviewRated, XPTable.reviewRated(rating))])
+            ?? XPTable.reviewRated(rating)
         if engine?.isFinished == true {
+            reward = gamification?.completeReviewSession(cardsReviewed: reviewedCount)
             streak = progress.currentStreak()
             phase = .summary
         }

@@ -5,7 +5,7 @@ Paste the "Review notes" block into App Store Connect. The rest of this file is 
 ## Review notes (paste this)
 
 ```
-AzBar («از بر») helps people memorize Persian poetry, starting with the Divan of Hafez. The interface is in Persian and laid out right-to-left; the tab names are Today «امروز», Library «کتابخانه», Review «مرور», Settings «تنظیمات».
+AzBar («ازبر») helps people memorize Persian poetry, starting with the Divan of Hafez. The interface is in Persian and laid out right-to-left; the tab names are Today «امروز», Library «کتابخانه», Review «مرور», Settings «تنظیمات».
 
 No login, account or in-app purchase exists. The app is free and open source: https://github.com/meysampg/AzBar
 

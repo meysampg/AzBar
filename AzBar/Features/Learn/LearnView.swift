@@ -35,12 +35,16 @@ struct LearnView: View {
                 case .session:
                     sessionContent
                 case .summary:
-                    LearnSummaryView(
+                    LessonCompleteView(
+                        kind: model.kind,
+                        passed: model.passed,
+                        reward: model.reward,
+                        xp: model.totalXP,
                         learnedCount: model.learnedKeys.count,
                         isPoemComplete: model.isPoemComplete,
-                        poemTitle: model.poem?.title ?? "",
-                        onContinue: {
-                            withAnimation(reduceMotion ? nil : .smooth) { model.startBatch() }
+                        hasNextLesson: model.hasNextLesson,
+                        onNext: {
+                            withAnimation(reduceMotion ? nil : .smooth) { model.startNextLesson() }
                         },
                         onFinish: { dismiss() }
                     )
@@ -60,7 +64,7 @@ struct LearnView: View {
                 }
                 if model.phase == .session {
                     ToolbarItem(placement: .principal) {
-                        Text("بیت \(model.positionInBatch.fa) از \(model.batchCount.fa)")
+                        Text(model.titleText)
                             .font(.app(.headline))
                             .accessibilityAddTraits(.isHeader)
                     }
@@ -74,7 +78,10 @@ struct LearnView: View {
             }
         }
         .interactiveDismissDisabled(model.phase == .session)
-        .task { await model.load(content: app.content, progress: app.progress, settings: app.settings) }
+        .task {
+            await model.load(content: app.content, progress: app.progress, settings: app.settings,
+                             gamification: app.gamification, sounds: app.sounds)
+        }
         .onDisappear { model.stopAudioIfNeeded(audio: audio) }
     }
 
@@ -87,11 +94,9 @@ struct LearnView: View {
         .scrollBounceBehavior(.basedOnSize)
         .animation(reduceMotion ? nil : .smooth(duration: 0.25), value: model.stepKey)
         .safeAreaInset(edge: .top, spacing: 0) {
-            ProgressView(value: model.progressValue)
+            LessonProgressBar(value: model.progressValue)
                 .padding(.horizontal, Theme.Spacing.l)
-                .padding(.vertical, Theme.Spacing.xs)
-                .accessibilityLabel("پیشرفت جلسه")
-                .accessibilityValue("\(Int((model.progressValue * 100).rounded()).fa) درصد")
+                .padding(.vertical, Theme.Spacing.s)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             LearnBottomBar(model: model)
@@ -99,7 +104,8 @@ struct LearnView: View {
     }
 
     private func reload() async {
-        await model.retry(content: app.content, progress: app.progress, settings: app.settings)
+        await model.retry(content: app.content, progress: app.progress, settings: app.settings,
+                          gamification: app.gamification, sounds: app.sounds)
     }
 }
 

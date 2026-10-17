@@ -14,7 +14,6 @@ struct ClozeMesraView: View {
     var peekDuration: Duration = .milliseconds(1500)
 
     @Environment(AppSettings.self) private var settings: AppSettings?
-    @Environment(\.layoutDirection) private var layoutDirection
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var peeked: Set<Int> = []
     @State private var peekCount = 0
@@ -26,8 +25,7 @@ struct ClozeMesraView: View {
         FlowLayout(
             horizontalSpacing: size * 0.28,
             verticalSpacing: font.lineSpacing(size) * 0.6,
-            rowAlignment: rowAlignment,
-            layoutDirection: layoutDirection
+            rowAlignment: rowAlignment
         ) {
             ForEach(tokens) { token in
                 tokenView(token)

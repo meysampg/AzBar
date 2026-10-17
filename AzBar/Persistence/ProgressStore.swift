@@ -17,10 +17,7 @@ final class ProgressStore {
     // MARK: Helpers
 
     private static func dayKey(_ date: Date) -> String {
-        var cal = Calendar(identifier: .gregorian)
-        cal.timeZone = .current
-        let c = cal.dateComponents([.year, .month, .day], from: date)
-        return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
+        DayKey(date, calendar: DayKey.gregorian()).string
     }
 
     private func fetch<T: PersistentModel>(_ descriptor: FetchDescriptor<T>) -> [T] {
@@ -220,8 +217,7 @@ final class ProgressStore {
 
     func hasActivity(on: Date) -> Bool {
         _ = revision
-        guard let a = activity(on: on) else { return false }
-        return a.reviewCount + a.learnedCount > 0
+        return activeDays().contains(DayKey(on, calendar: DayKey.gregorian()))
     }
 
     func todayActivity() -> (reviews: Int, learned: Int) {
@@ -230,62 +226,70 @@ final class ProgressStore {
         return (a.reviewCount, a.learnedCount)
     }
 
-    /// Consecutive days with activity, counting back from today if it has activity, else from yesterday.
+    /// Consecutive active days (freeze-aware), counting back from today if it is active, else from yesterday.
     func currentStreak(now: Date = .now) -> Int {
         _ = revision
-        let cal = Calendar.current
-        var day = cal.startOfDay(for: now)
-        if !hasActivity(on: day) {
-            guard let y = cal.date(byAdding: .day, value: -1, to: day) else { return 0 }
-            day = y
-        }
-        var streak = 0
-        while hasActivity(on: day) {
-            streak += 1
-            guard let prev = cal.date(byAdding: .day, value: -1, to: day) else { break }
-            day = prev
-        }
-        return streak
+        let cal = DayKey.gregorian()
+        return StreakCalculator.current(active: activeDays(), frozen: frozenDays(),
+                                        today: DayKey(now, calendar: cal), calendar: cal)
     }
 
     // MARK: Gamification queries
-    // STUB (P-B): implement, keep signatures. P0 returns defaults so everything compiles.
-    // Package B also makes `currentStreak` freeze-aware (StreakCalculator) and makes `dayKey` use `DayKey(...).string`.
+
+    /// Lets other stores that write into the shared container invalidate views observing this store.
+    func noteExternalChange() {
+        revision += 1
+    }
 
     /// Cards that have left the `.new` state.
     func learnedCoupletCount() -> Int {
         _ = revision
-        return 0
+        let new = CardState.new.rawValue
+        return (try? context.fetchCount(FetchDescriptor<CoupletCard>(predicate: #Predicate { $0.stateRaw != new }))) ?? 0
     }
 
     /// Cards in `.review` with `stability >= threshold`.
     func matureCoupletCount(threshold: Double = 21) -> Int {
         _ = revision
-        _ = threshold
-        return 0
+        let review = CardState.review.rawValue
+        return (try? context.fetchCount(FetchDescriptor<CoupletCard>(
+            predicate: #Predicate { $0.stateRaw == review && $0.stability >= threshold }))) ?? 0
     }
 
     /// Review log entries that are not learning entries.
     func reviewCount() -> Int {
         _ = revision
-        return 0
+        return (try? context.fetchCount(FetchDescriptor<ReviewLogEntry>(predicate: #Predicate { !$0.isLearning }))) ?? 0
     }
 
     /// Plans whose memorizable couplets all have a card.
     func completedPoemCount() -> Int {
         _ = revision
-        return 0
+        var count = 0
+        for plan in fetch(FetchDescriptor<MemorizationPlan>()) where plan.memorizableCount > 0 {
+            let pid = plan.poemId
+            let cards = (try? context.fetchCount(FetchDescriptor<CoupletCard>(predicate: #Predicate { $0.poemId == pid }))) ?? 0
+            if cards >= plan.memorizableCount { count += 1 }
+        }
+        return count
     }
 
     /// Days with `DailyActivity` (review + learned > 0) or `DailyXP` (xp > 0).
     func activeDays() -> Set<DayKey> {
         _ = revision
-        return []
+        var out = Set<DayKey>()
+        for a in fetch(FetchDescriptor<DailyActivity>()) where a.reviewCount + a.learnedCount > 0 {
+            if let k = DayKey(string: a.dayKey) { out.insert(k) }
+        }
+        for x in fetch(FetchDescriptor<DailyXP>(predicate: #Predicate { $0.xp > 0 })) {
+            if let k = DayKey(string: x.dayKey) { out.insert(k) }
+        }
+        return out
     }
 
     /// Days covered by a streak freeze.
     func frozenDays() -> Set<DayKey> {
         _ = revision
-        return []
+        return Set(fetch(FetchDescriptor<FrozenDay>()).compactMap { DayKey(string: $0.dayKey) })
     }
 }

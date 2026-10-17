@@ -6,8 +6,8 @@ App Store Connect has no Persian locale, so the primary language is English (U.S
 
 | Field | Value | Limit |
 |---|---|---|
-| Name | `از بر` | 30 |
-| Name, fallback 1 (if taken) | `از بر: حفظ شعر فارسی` (20 characters) | 30 |
+| Name | `ازبر` | 30 |
+| Name, fallback 1 (if taken) | `ازبر: حفظ شعر فارسی` (19 characters) | 30 |
 | Name, fallback 2 (if taken) | `AzBar: Persian Poetry` (21 characters) | 30 |
 | Subtitle | `Memorize Hafez, verse by verse` (**30 characters**) | 30 |
 | Category | Education | |
@@ -37,7 +37,7 @@ persian,farsi,poetry,poem,divan,ghazal,memorize,saadi,khayyam,fal,flashcards,rec
 ## Description
 
 ```
-از بر برنامه‌ای برای حفظ کردن شعر فارسی است، با دیوان حافظ. بیت‌به‌بیت می‌خوانید، با صدای خوانندگان می‌شنوید، جای خالی‌ها را پر می‌کنید و با مرورِ فاصله‌دار شعر را برای همیشه از بر می‌کنید.
+ازبر برنامه‌ای برای حفظ کردن شعر فارسی است، با دیوان حافظ. بیت‌به‌بیت می‌خوانید، با صدای خوانندگان می‌شنوید، جای خالی‌ها را پر می‌کنید و با مرورِ فاصله‌دار شعر را برای همیشه از بر می‌کنید.
 
 • دیوان کامل حافظ، ۶۹۲ شعر، بدون نیاز به اینترنت
 • سعدی و خیام به‌صورت آنلاین

@@ -4,7 +4,7 @@ Effective date: 2026-10-17
 
 ## English
 
-AzBar («از بر») does not collect, share or sell any personal data. It has no accounts, no analytics, no advertising and no tracking.
+AzBar («ازبر») does not collect, share or sell any personal data. It has no accounts, no analytics, no advertising and no tracking.
 
 **What stays on your device.** Your memorization progress, favourites and settings are stored only on your device (in SwiftData and UserDefaults). They are removed when you delete the app.
 
@@ -16,7 +16,7 @@ AzBar («از بر») does not collect, share or sell any personal data. It has 
 
 ## فارسی
 
-«از بر» هیچ داده شخصی‌ای جمع‌آوری، به اشتراک یا فروش نمی‌گذارد. برنامه حساب کاربری، تحلیل رفتار، تبلیغات و ردیابی ندارد.
+«ازبر» هیچ داده شخصی‌ای جمع‌آوری، به اشتراک یا فروش نمی‌گذارد. برنامه حساب کاربری، تحلیل رفتار، تبلیغات و ردیابی ندارد.
 
 **آنچه روی دستگاه شما می‌ماند.** پیشرفت حفظ، علاقه‌مندی‌ها و تنظیمات فقط روی دستگاه خودتان (در SwiftData و UserDefaults) ذخیره می‌شود و با حذف برنامه پاک می‌شود.
 

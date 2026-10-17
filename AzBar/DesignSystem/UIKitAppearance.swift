@@ -9,6 +9,11 @@ enum UIKitAppearance {
             return UIFontMetrics(forTextStyle: style).scaledFont(for: base)
         }
 
+        let lang = Bundle.main.preferredLocalizations.first ?? "fa"
+        if Locale.Language(identifier: lang).characterDirection != .rightToLeft {
+            UIView.appearance().semanticContentAttribute = .forceRightToLeft
+        }
+
         let nav = UINavigationBar.appearance()
         nav.titleTextAttributes = [.font: font("Vazirmatn-SemiBold", 17, .headline)]
         nav.largeTitleTextAttributes = [.font: font("Vazirmatn-Bold", 34, .largeTitle)]

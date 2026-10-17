@@ -16,7 +16,7 @@ struct AboutView: View {
                         .font(.system(size: 52))
                         .foregroundStyle(.tint)
                         .accessibilityHidden(true)
-                    Text("از بر").font(.app(.title))
+                    Text("ازبر").font(.app(.title))
                     Text("حفظ شعر فارسی، آغاز با حافظ")
                         .font(.app(.subheadline))
                         .foregroundStyle(.secondary)
@@ -75,7 +75,7 @@ struct AboutView: View {
                 Text(verbatim: "© 2026 Meysam Pourganji")
             }
         }
-        .navigationTitle("دربارهٔ از بر")
+        .navigationTitle("دربارهٔ ازبر")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

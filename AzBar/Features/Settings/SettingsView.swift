@@ -18,9 +18,10 @@ struct SettingsView: View {
             displaySection(settings: $settings)
             remindersSection(settings: $settings)
             memorizationSection(settings: $settings)
+            motivationSection(settings: $settings)
             reciterSection(settings: $settings)
             Section {
-                NavigationLink("دربارهٔ از بر") { AboutView() }
+                NavigationLink("دربارهٔ ازبر") { AboutView() }
             } header: {
                 Text("دربارهٔ برنامه").font(.app(.footnote))
             }
@@ -180,6 +181,24 @@ struct SettingsView: View {
         } footer: {
             Text("هدف یادسپاری بالاتر یعنی مرورهای نزدیک‌تر و بار روزانهٔ بیشتر.")
                 .font(.app(.footnote))
+        }
+    }
+
+    // MARK: Motivation
+
+    private func motivationSection(settings: Bindable<AppSettings>) -> some View {
+        Section {
+            Picker("هدف روزانه", selection: settings.dailyXPGoal) {
+                ForEach(DailyGoal.options, id: \.self) { goal in
+                    Text("\(goal.fa) امتیاز · \(DailyGoalText.title(goal))").tag(goal)
+                }
+            }
+            Toggle("صداها", isOn: settings.soundsEnabled)
+            Toggle("تمرین‌های تعاملی", isOn: settings.exercisesEnabled)
+        } header: {
+            Text("انگیزه").font(.app(.footnote))
+        } footer: {
+            Text("واژه‌چینی و انتخاب واژه در درس‌ها").font(.app(.footnote))
         }
     }
 

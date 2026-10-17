@@ -2,14 +2,13 @@ import SwiftUI
 
 /// Wrapping layout for word tokens (poem lines).
 ///
-/// Direction is passed in explicitly instead of relying on implicit mirroring, so the first
-/// subview always sits on the reading-start side (right in RTL). Rows can be aligned to the
-/// leading edge, the centre or the trailing edge.
+/// Relies on SwiftUI's automatic RTL mirroring of Layout placement: positions are computed in
+/// leading-origin space, so the first subview sits on the reading-start side (right in RTL).
+/// Rows can be aligned to the leading edge, the centre or the trailing edge.
 struct FlowLayout: Layout {
     var horizontalSpacing: CGFloat = 8
     var verticalSpacing: CGFloat = 8
     var rowAlignment: HorizontalAlignment = .center
-    var layoutDirection: LayoutDirection = .leftToRight
 
     private struct Row {
         var indices: [Int] = []
@@ -57,9 +56,7 @@ struct FlowLayout: Layout {
             var offset = startOffset
             for index in row.indices {
                 let size = subviews[index].sizeThatFits(.unspecified)
-                let x = layoutDirection == .rightToLeft
-                    ? bounds.maxX - offset - size.width
-                    : bounds.minX + offset
+                let x = bounds.minX + offset
                 subviews[index].place(
                     at: CGPoint(x: x, y: y + (row.height - size.height) / 2),
                     anchor: .topLeading,
@@ -73,13 +70,13 @@ struct FlowLayout: Layout {
 }
 
 #Preview {
-    FlowLayout(horizontalSpacing: 8, verticalSpacing: 8, rowAlignment: .center, layoutDirection: .rightToLeft) {
-        ForEach(0..<14, id: \.self) { i in
-            Text("واژه\(i.fa)")
+    FlowLayout(horizontalSpacing: 8, verticalSpacing: 8, rowAlignment: .center) {
+        ForEach(1...14, id: \.self) { i in
+            Text("\(i.fa)")
                 .padding(.horizontal, 8)
                 .background(.quaternary, in: .capsule)
         }
     }
     .padding()
-    .environment(\.layoutDirection, .rightToLeft)
+    .persianRoot()
 }

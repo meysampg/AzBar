@@ -111,5 +111,5 @@ struct CoupletView: View {
         }
         .padding()
     }
-    .environment(\.layoutDirection, .rightToLeft)
+    .persianRoot()
 }

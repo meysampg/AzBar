@@ -1,10 +1,10 @@
 <p align="center"><img src="AzBar/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon.png" width="128" alt="AzBar app icon"></p>
 
-# از بر · AzBar
+# ازبر · AzBar
 
 [![CI](https://github.com/meysampg/AzBar/actions/workflows/ci.yml/badge.svg)](https://github.com/meysampg/AzBar/actions/workflows/ci.yml)
 
-از بر برنامه‌ای برای حفظ کردن شعر فارسی است، با دیوان حافظ. بیت‌به‌بیت می‌خوانید، می‌شنوید، جای خالی‌ها را پر می‌کنید و با مرورِ فاصله‌دار شعر را برای همیشه از بر می‌کنید.
+ازبر برنامه‌ای برای حفظ کردن شعر فارسی است، با دیوان حافظ. بیت‌به‌بیت می‌خوانید، می‌شنوید، جای خالی‌ها را پر می‌کنید و با مرورِ فاصله‌دار شعر را برای همیشه از بر می‌کنید.
 
 AzBar («az bar», from memory) is a free, open-source iOS app for memorizing Persian poetry, starting with the Divan of Hafez. You read each couplet, listen to a recitation, fill in progressively more blanks, and then review it on a spaced-repetition schedule. The whole interface is Persian and right-to-left.
 

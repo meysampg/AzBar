@@ -107,7 +107,7 @@ struct PlayerBar: View {
         )
     }
     .padding()
-    .environment(\.layoutDirection, .rightToLeft)
+    .persianRoot()
 }
 
 #Preview("Collapsed") {
@@ -117,5 +117,5 @@ struct PlayerBar: View {
         onToggle: {}, onSkipBack: {}, onSelect: { _ in }
     )
     .padding()
-    .environment(\.layoutDirection, .rightToLeft)
+    .persianRoot()
 }

@@ -6,7 +6,7 @@ struct RatingBar: View {
     /// Preview of the scheduling outcome per rating; nil hides the intervals.
     var previews: [Rating: SchedulingResult]?
     var now: Date = .now
-    // STUB (P-A): highlight the suggested button (.glassProminent + caption «پیشنهاد», label suffix «، پیشنهادی»).
+    /// Highlighted with a prominent glass style and the caption «پیشنهاد».
     var suggested: Rating? = nil
     var onRate: (Rating) -> Void
 
@@ -42,12 +42,16 @@ struct RatingBar: View {
                                         .font(.app(.caption2))
                                         .opacity(0.75)
                                 }
+                                if rating == suggested {
+                                    Text("پیشنهاد")
+                                        .font(.app(.caption2, weight: .bold))
+                                }
                             }
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
                             .frame(maxWidth: .infinity, minHeight: 44)
                         }
-                        .buttonStyle(.glass)
+                        .buttonStyle(RatingButtonStyle(prominent: rating == suggested))
                         .tint(Theme.color(for: rating))
                         .accessibilityLabel(label(for: rating))
                     }
@@ -66,17 +70,30 @@ struct RatingBar: View {
 
     private func label(for rating: Rating) -> String {
         let title = Theme.title(for: rating)
+        var text = title
         if let result = previews?[rating] {
-            return "\(title)، مرور بعدی \(IntervalFormatter.short(result, from: now)) دیگر"
+            text = "\(title)، مرور بعدی \(IntervalFormatter.short(result, from: now)) دیگر"
         }
-        return title
+        return rating == suggested ? text + "، پیشنهادی" : text
+    }
+}
+
+private struct RatingButtonStyle: PrimitiveButtonStyle {
+    let prominent: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        if prominent {
+            Button(configuration).buttonStyle(.glassProminent)
+        } else {
+            Button(configuration).buttonStyle(.glass)
+        }
     }
 }
 
 #Preview {
     let scheduler = FSRSScheduler()
     let card = FSRSCard.new(now: .now)
-    RatingBar(previews: scheduler.preview(card, now: .now)) { _ in }
+    RatingBar(previews: scheduler.preview(card, now: .now), suggested: .good) { _ in }
         .padding()
-        .environment(\.layoutDirection, .rightToLeft)
+        .persianRoot()
 }

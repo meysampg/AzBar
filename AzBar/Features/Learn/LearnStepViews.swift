@@ -172,9 +172,16 @@ struct LearnStepBody: View {
             recallSecondContent(couplet)
         case .recallChain:
             recallChainContent(couplet)
-        case .fillBlank, .wordBank:
-            // STUB (P-C): FillBlankView / WordBankView.
-            EmptyView()
+        case .fillBlank:
+            if case .fillBlank(let exercise)? = model.currentExercise {
+                FillBlankView(exercise: exercise, contextMesra: model.fillBlankContext,
+                              selected: $model.selectedOption, result: model.checkResult)
+            }
+        case .wordBank:
+            if case .wordBank(let exercise)? = model.currentExercise {
+                WordBankView(exercise: exercise, chosen: $model.chosenTileIds, result: model.checkResult)
+                hint("روی واژه‌ها به ترتیب ضربه بزنید")
+            }
         case nil:
             EmptyView()
         }
@@ -269,22 +276,67 @@ struct LearnBottomBar: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        SessionActionBar {
-            if model.awaitsRating {
-                RatingBar(previews: model.ratingPreviews(), now: model.previewDate) { rating in
-                    animated { model.rate(rating) }
-                }
-            } else if model.isRecallStep && !model.isRevealed {
-                SessionPrimaryButton(title: "نمایش", systemImage: "eye") {
-                    animated { model.reveal() }
-                }
+        Group {
+            if model.isGradedStep, model.isRevealed, let result = model.checkResult {
+                feedback(result)
+                    .transition(.move(edge: .bottom))
             } else {
-                SessionPrimaryButton(title: "بعدی") {
-                    animated { model.next() }
-                }
+                SessionActionBar { actions }
             }
         }
+        .sensoryFeedback(trigger: model.checkCount) { _, _ in
+            model.checkResult?.isCorrect == true ? .success : .error
+        }
         .sensoryFeedback(.selection, trigger: model.stepKey)
+    }
+
+    @ViewBuilder
+    private var actions: some View {
+        if model.isGradedStep {
+            VStack(spacing: Theme.Spacing.s) {
+                Button("بررسی") { animated { model.check() } }
+                    .buttonStyle(.chunky(Theme.Playful.correct))
+                    .disabled(!model.canCheck)
+                Button("نمی‌دانم") { animated { model.check(giveUp: true) } }
+                    .font(.app(.subheadline, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(minHeight: 36)
+            }
+        } else if model.awaitsRating {
+            RatingBar(previews: model.ratingPreviews(), now: model.previewDate, suggested: model.suggestedRating) { rating in
+                animated { model.rate(rating) }
+            }
+        } else if model.isRecallStep && !model.isRevealed {
+            Button { animated { model.reveal() } } label: {
+                Label("نمایش پاسخ", systemImage: "eye")
+            }
+            .buttonStyle(.chunky(.blue))
+        } else {
+            Button("ادامه") { animated { model.next() } }
+                .buttonStyle(.chunky(Theme.Playful.correct))
+        }
+    }
+
+    private var ratingBar: some View {
+        RatingBar(previews: model.ratingPreviews(), now: model.previewDate, suggested: model.suggestedRating) { rating in
+            animated { model.rate(rating) }
+        }
+    }
+
+    @ViewBuilder
+    private func feedback(_ result: ExerciseResult) -> some View {
+        let advance = { animated { model.next() } }
+        if model.awaitsRating {
+            if result.isCorrect {
+                FeedbackPanel(kind: .correct(message: model.correctMessage), xp: model.lastCheckXP, onContinue: advance) { ratingBar }
+            } else {
+                FeedbackPanel(kind: .incorrect(answer: result.expected), xp: 0, onContinue: advance) { ratingBar }
+            }
+        } else if result.isCorrect {
+            FeedbackPanel(kind: .correct(message: model.correctMessage), xp: model.lastCheckXP, onContinue: advance)
+        } else {
+            FeedbackPanel(kind: .incorrect(answer: result.expected), xp: 0, onContinue: advance)
+        }
     }
 
     private func animated(_ body: () -> Void) {
@@ -305,6 +357,9 @@ private struct LearnStepPreview: View {
     var body: some View {
         ScrollView { LearnStepBody(model: model) }
             .safeAreaInset(edge: .bottom) { LearnBottomBar(model: model) }
-            .task { await model.load(content: app.content, progress: app.progress, settings: app.settings) }
+            .task {
+                await model.load(content: app.content, progress: app.progress, settings: app.settings,
+                                 gamification: app.gamification, sounds: app.sounds)
+            }
     }
 }

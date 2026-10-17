@@ -4,7 +4,6 @@ struct ReaderView: View {
     let poemId: PoemID
     let poetId: PoetID
 
-    @Environment(AppModel.self) private var appModel
     @Environment(AppSettings.self) private var settings
     @Environment(ProgressStore.self) private var progress
     @Environment(AudioPlayerService.self) private var audio
@@ -16,6 +15,7 @@ struct ReaderView: View {
     @State private var width: CGFloat = 0
     @State private var isBarCollapsed = false
     @State private var highlightedIndex: Int?
+    @State private var showPath = false
 
     init(poemId: PoemID, poetId: PoetID) {
         self.poemId = poemId
@@ -43,6 +43,9 @@ struct ReaderView: View {
         .navigationTitle(model.poem?.title ?? "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbarContent }
+        .navigationDestination(isPresented: $showPath) {
+            PoemPathView(poemId: poemId, poetId: poetId)
+        }
         .task { await load() }
         .onDisappear {
             if audio.poemId == poemId { audio.stop() }
@@ -143,7 +146,7 @@ struct ReaderView: View {
             progress.addPlan(poem: poem, poetName: model.poetName)
         }
         audio.stop()
-        appModel.startLearning(poemId: poem.id, poetId: poetId)
+        showPath = true
     }
 
     // MARK: Toolbar
@@ -162,7 +165,7 @@ struct ReaderView: View {
                 .sensoryFeedback(.selection, trigger: isFavorite)
 
                 Menu {
-                    Toggle("نمایش معنی", systemImage: "text.alignleft", isOn: Bindable(settings).showMeaning)
+                    Toggle("نمایش معنی", systemImage: "text.bubble", isOn: Bindable(settings).showMeaning)
                     Toggle("نمایش اعراب", systemImage: "textformat", isOn: Bindable(settings).showDiacritics)
                     Divider()
                     ShareLink(item: poem.plainText, subject: Text(verbatim: poem.title)) {

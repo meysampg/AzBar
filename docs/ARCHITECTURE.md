@@ -1,6 +1,6 @@
 # AzBar architecture
 
-AzBar («از بر») is an iOS 26 app for memorizing Persian poetry. This document describes how it is built: the module layout, data schemas, the memorization engine, the app-layer contracts, the screens, the Ganjoor API behaviour the code depends on, and how to test.
+AzBar («ازبر») is an iOS 26 app for memorizing Persian poetry. This document describes how it is built: the module layout, data schemas, the memorization engine, the app-layer contracts, the screens, the Ganjoor API behaviour the code depends on, and how to test.
 
 ## 1. Architecture
 
@@ -661,7 +661,7 @@ struct CoupletView: View { couplet: Couplet; layout: CoupletLayout; isHighlighte
   - `Picker("هدف یادسپاری")` with options ۸۵٪ / ۹۰٪ / ۹۵٪.
   - `Stepper("سقف مرور روزانه")` from 20 to 500 in steps of 10.
 - **Section "خوانش":** `Picker("خوانندهٔ ترجیحی")` with "خودکار" plus the list from `recitationArtists(poetId: 2)`.
-- **Section "دربارهٔ برنامه":** `NavigationLink("دربارهٔ از بر")` to `AboutView`, which contains the Ganjoor attribution with a link, the open-source links (source code, issue tracker, privacy policy) and the MIT licence note, font credits (Vazirmatn, Noto Naskh Arabic, Noto Nastaliq Urdu, SIL OFL 1.1), and the version number.
+- **Section "دربارهٔ برنامه":** `NavigationLink("دربارهٔ ازبر")` to `AboutView`, which contains the Ganjoor attribution with a link, the open-source links (source code, issue tracker, privacy policy) and the MIT licence note, font credits (Vazirmatn, Noto Naskh Arabic, Noto Nastaliq Urdu, SIL OFL 1.1), and the version number.
 
 **Other UI rules**
 - Every icon-only button needs `.accessibilityLabel` in Persian.

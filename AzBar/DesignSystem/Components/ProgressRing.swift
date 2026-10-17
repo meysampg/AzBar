@@ -37,5 +37,5 @@ struct ProgressRing: View {
         ProgressRing(value: 0).frame(width: 30, height: 30)
     }
     .padding()
-    .environment(\.layoutDirection, .rightToLeft)
+    .persianRoot()
 }

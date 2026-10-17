@@ -8,6 +8,7 @@ struct FalView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(ProgressStore.self) private var progress
     @Environment(AudioPlayerService.self) private var audio
+    @Environment(GamificationStore.self) private var gamification
 
     @State private var model = FalModel()
 
@@ -46,6 +47,9 @@ struct FalView: View {
                     }
                 }
             }
+        }
+        .onChange(of: model.phase) { _, phase in
+            if case .result = phase { gamification.recordFalOpened() }
         }
         .task(id: model.requestId) {
             await model.open(content: content)

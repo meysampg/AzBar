@@ -32,7 +32,7 @@ Record the answer here (date, who replied, exact wording, link):
 
 ## Where attribution appears
 
-- Settings, About («دربارهٔ از بر»), section «منبع شعرها»
+- Settings, About («دربارهٔ ازبر»), section «منبع شعرها»
 - Reader: the «مشاهده در گنجور» link on each poem
 - Fal result: «منبع: گنجور»
 - README ("Credits & licences")
@@ -45,7 +45,7 @@ Persian:
 ```
 سلام و احترام،
 
-من میثم پورگنجی هستم، سازندهٔ «از بر»، برنامه‌ای رایگان و متن‌باز (مجوز MIT) برای آیفون که به حفظ کردن شعر فارسی کمک می‌کند، با دیوان حافظ. بدون تبلیغ است، چیزی از کاربران جمع نمی‌کند و کدش اینجاست: https://github.com/meysampg/AzBar
+من میثم پورگنجی هستم، سازندهٔ «ازبر»، برنامه‌ای رایگان و متن‌باز (مجوز MIT) برای آیفون که به حفظ کردن شعر فارسی کمک می‌کند، با دیوان حافظ. بدون تبلیغ است، چیزی از کاربران جمع نمی‌کند و کدش اینجاست: https://github.com/meysampg/AzBar
 
 برنامه متن شعرها، معنی و چکیدهٔ شعرها و خوانش‌ها را از گنجور می‌گیرد و در همهٔ جاها از گنجور و خوانندگان نام می‌برد و پیوند به صفحهٔ هر شعر در ganjoor.net می‌گذارد. می‌خواهم پیش از انتشار در اپ استور، به‌طور مشخص دو چیز را بپرسم:
 
@@ -63,7 +63,7 @@ English:
 ```
 Hello,
 
-I am Meysam Pourganji, the author of AzBar («از بر»), a free, open-source (MIT) iPhone app for memorizing Persian poetry, starting with Hafez. It has no ads, collects no user data, and the code is at https://github.com/meysampg/AzBar
+I am Meysam Pourganji, the author of AzBar («ازبر»), a free, open-source (MIT) iPhone app for memorizing Persian poetry, starting with Hafez. It has no ads, collects no user data, and the code is at https://github.com/meysampg/AzBar
 
 The app uses poem texts, couplet meanings, poem summaries and recitations from Ganjoor, credits Ganjoor and the reciters in the app, and links each poem back to its page on ganjoor.net. Before publishing to the App Store I would like to ask two specific questions:
 

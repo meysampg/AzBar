@@ -24,7 +24,8 @@ struct ReviewSessionView: View {
                 case .session:
                     sessionContent
                 case .summary:
-                    ReviewSummaryView(counts: model.counts, streak: model.streak, onDone: { dismiss() })
+                    ReviewSummaryView(counts: model.counts, streak: model.streak, xp: model.totalXP,
+                                      reward: model.reward, onDone: { dismiss() })
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -51,7 +52,8 @@ struct ReviewSessionView: View {
             }
         }
         .interactiveDismissDisabled(model.phase == .session)
-        .task { await model.load(content: app.content, progress: app.progress, settings: app.settings) }
+        .task { await model.load(content: app.content, progress: app.progress, settings: app.settings,
+                                   gamification: app.gamification) }
     }
 
     private var sessionContent: some View {
@@ -63,11 +65,9 @@ struct ReviewSessionView: View {
         .scrollBounceBehavior(.basedOnSize)
         .animation(reduceMotion ? nil : .smooth(duration: 0.25), value: model.stepKey)
         .safeAreaInset(edge: .top, spacing: 0) {
-            ProgressView(value: model.progressValue)
+            LessonProgressBar(value: model.progressValue, tint: .blue)
                 .padding(.horizontal, Theme.Spacing.l)
-                .padding(.vertical, Theme.Spacing.xs)
-                .accessibilityLabel("پیشرفت مرور")
-                .accessibilityValue("\(Int((model.progressValue * 100).rounded()).fa) درصد")
+                .padding(.vertical, Theme.Spacing.s)
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             ReviewBottomBar(model: model)
@@ -162,9 +162,10 @@ struct ReviewBottomBar: View {
                     animated { model.rate(rating) }
                 }
             } else {
-                SessionPrimaryButton(title: "نمایش پاسخ", systemImage: "eye") {
-                    animated { model.reveal() }
+                Button { animated { model.reveal() } } label: {
+                    Label("نمایش پاسخ", systemImage: "eye")
                 }
+                .buttonStyle(.chunky(.blue))
             }
         }
         .sensoryFeedback(.selection, trigger: model.isRevealed)
