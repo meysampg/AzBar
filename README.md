@@ -61,7 +61,28 @@ All pure logic lives in the package and is tested on the host with `swift test`.
     -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
   ```
 
-- To run on a device, open `AzBar.xcodeproj`, then set your own Team and a unique bundle identifier under Signing & Capabilities. Do not commit those changes.
+- To run on a device, see [Install on your iPhone](#install-on-your-iphone).
+
+## Install on your iPhone
+
+```sh
+Tools/install.sh                 # builds, installs and launches; asks which device if several are connected
+Tools/install.sh "Other iPhone"  # a UDID or part of the device name (see `xcrun devicectl list devices`)
+```
+
+1. Connect the iPhone by USB (or pair it on the same network) and tap Trust. The iCloud account on the phone does not matter.
+2. Turn on Developer Mode: Settings > Privacy & Security > Developer Mode, then restart.
+3. Run the script. Xcode registers the device with your team automatically (`-allowProvisioningUpdates`).
+4. After the first install, trust the developer: Settings > General > VPN & Device Management > your Apple ID > Trust. Then open the app.
+5. With a free Apple ID the build expires after 7 days; run `Tools/install.sh` again to re-sign it (`Tools/renew.sh` does the same for the owner's phone).
+
+To sign with a different Apple ID, pass its team and a bundle id that is unique to that team (free teams cannot share ids):
+
+```sh
+TEAM=ABCDE12345 BUNDLE_ID=com.example.azbar Tools/install.sh
+```
+
+Other options: `CONFIG=Release`, `NO_PULL=1` (skip `git pull`).
 
 ## Adding a poet
 
